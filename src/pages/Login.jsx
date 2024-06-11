@@ -1,6 +1,63 @@
-import React from "react";
+import React, { useState } from "react";
+import axios from "axios";
+import Swal from 'sweetalert2'
 
 function Login() {
+  const [loginData, setLoginData] = useState({
+    instructor_id: "",
+    password: "",
+  });
+
+  axios.defaults.withCredentials = true;
+
+  const handleLoginChange = (e) => {
+    setLoginData({ ...loginData, [e.target.name]: e.target.value });
+  };
+
+  const handleLoginSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      const response = await axios.post(
+        `${import.meta.env.VITE_REACT_APP_API_URL}/api/login`,
+        loginData
+      );
+
+      if (response.status === 200) {
+        const { message } = response.data;
+
+        if (message === "Login successful for user") {
+          Swal.fire({
+            title: "Login Successful!",
+            text: "Welcome User!",
+            icon: "success"
+          });
+          window.location.href = "/home";
+        } else if (message === "Login successful for admin") {
+          Swal.fire({
+            title: "Login Successful!",
+            text: "Welcome Admin!",
+            icon: "success"
+          });
+          window.location.href = "/admin";
+        } else if (message === "Invalid Login") {
+          Swal.fire({
+            icon: "error",
+            title: "Invalid Login!",
+            text: "Incorrect User ID or Password!",
+          });
+        }
+      }
+    } catch (error) {
+      console.error("Error:", error);
+        Swal.fire({
+          icon: "error",
+          title: "Oops...",
+          text: "Something went wrong!",
+        });
+      console.error("Error during login:", error.message);
+    }
+  };
+
   return (
     <>
       <main>
@@ -29,7 +86,11 @@ function Login() {
                           Enter your username &amp; password to login
                         </p>
                       </div>
-                      <form className="row g-3 needs-validation" noValidate="">
+                      <form
+                        className="row g-3 needs-validation"
+                        noValidate=""
+                        onSubmit={handleLoginSubmit}
+                      >
                         <div className="col-12">
                           <label htmlFor="yourUsername" className="form-label">
                             Username
@@ -43,7 +104,10 @@ function Login() {
                             </span>
                             <input
                               type="text"
-                              name="username"
+                              name="instructor_id"
+                              placeholder="Username"
+                              value={loginData.instructor_id}
+                              onChange={handleLoginChange}
                               className="form-control"
                               id="yourUsername"
                               required=""
@@ -60,6 +124,9 @@ function Login() {
                           <input
                             type="password"
                             name="password"
+                            placeholder="password"
+                            value={loginData.password}
+                            onChange={handleLoginChange}
                             className="form-control"
                             id="yourPassword"
                             required=""

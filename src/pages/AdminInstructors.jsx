@@ -1,6 +1,7 @@
 import React, { useMemo, useState, useEffect } from "react";
 import { useTable, useSortBy, useGlobalFilter } from "react-table";
 import axios from "axios";
+import Swal from 'sweetalert2'
 
 function AdminInstructors() {
   // Fetching
@@ -38,7 +39,7 @@ function AdminInstructors() {
           <div>
             <button
               type="button"
-              class="btn btn-secondary mx-2 btn-sm"
+              class="btn btn-secondary btn-sm"
               data-bs-toggle="modal"
               data-bs-target="#Modal-Edit"
               onClick={() => handleEdit(row.index)}
@@ -47,7 +48,7 @@ function AdminInstructors() {
             </button>
             <button
               type="button"
-              class="btn btn-danger btn-sm"
+              class="btn btn-danger mx-2 btn-sm"
               onClick={() => handleRemove(row.index)}
             >
               <i class="bi bi-trash" /> Delete
@@ -71,6 +72,7 @@ function AdminInstructors() {
 
   // Form Handling
   const [file, setFile] = useState();
+  const [selectedIndex, setSelectedIndex] = useState(null);
 
   const [formData, setFormData] = useState({
     instructor_id: "",
@@ -104,7 +106,6 @@ function AdminInstructors() {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    alert("Submitting form, please wait...");
 
     const formDataToSend = new FormData();
     formDataToSend.append("instructor_id", formData.instructor_id);
@@ -120,22 +121,121 @@ function AdminInstructors() {
 
     axios
       .post(
-        `${import.meta.env.VITE_REACT_APP_API_URL}/api/add_instructor`,
+        `${import.meta.env.VITE_REACT_APP_API_URL}/api/instructor/add`,
         formDataToSend
       )
       .then((response) => {
         console.log(response.data);
-        alert("Form submitted successfully!");
+        Swal.fire({
+          title: "Good job!",
+          text: "You clicked the button!",
+          icon: "success"
+        });
+        getInstructorData();
       })
       .catch((error) => {
         console.error("Error:", error);
-        alert("Error occurred while submitting the form. Please try again.");
+        Swal.fire({
+          icon: "error",
+          title: "Oops...",
+          text: "Something went wrong!",
+        });
+      });
+  };
+
+  const handleUpdate = (e) => {
+    e.preventDefault();
+
+    const formDataToSend = new FormData();
+    formDataToSend.append("instructor_id", formData.instructor_id);
+    formDataToSend.append("last_name", formData.last_name);
+    formDataToSend.append("first_name", formData.first_name);
+    formDataToSend.append("middle_name", formData.middle_name);
+    formDataToSend.append("section", formData.section);
+    formDataToSend.append("instructor_pic", file);
+    formDataToSend.append("address", formData.address);
+    formDataToSend.append("contact", formData.contact);
+    formDataToSend.append("email", formData.email);
+    formDataToSend.append("password", formData.password);
+
+    const selectedInstructor = instructorData[selectedIndex];
+    formDataToSend.append(
+      "instructorToUpdate",
+      selectedInstructor.instructor_id
+    );
+    formDataToSend.append(
+      "instructorPicToUpdate",
+      selectedInstructor.instructor_pic
+    );
+
+    axios
+      .post(
+        `${import.meta.env.VITE_REACT_APP_API_URL}/api/instructor/update`,
+        formDataToSend
+      )
+      .then((response) => {
+        console.log(response.data);
+        Swal.fire({
+          title: "Success!",
+          text: "Instructor added successfully!",
+          icon: "success"
+        });
+        getInstructorData();
+      })
+      .catch((error) => {
+        console.error("Error:", error);
+        Swal.fire({
+          icon: "error",
+          title: "Oops...",
+          text: "Something went wrong!",
+        });
       });
   };
 
   const handleEdit = (index) => {
     const selectedInstructor = instructorData[index];
+    setSelectedIndex(index);
     setFormData(selectedInstructor);
+  };
+
+  const handleRemove = (index) => {
+    const selectedInstructor = instructorData[index];
+    const instructor_id = selectedInstructor.instructor_id;
+    const instructor_pic = selectedInstructor.instructor_pic;
+
+    Swal.fire({
+      title: "Are you sure?",
+      text: "You won't be able to revert this!",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#3085d6",
+      cancelButtonColor: "#d33",
+      confirmButtonText: "Yes, delete it!"
+    }).then((result) => {
+      if (result.isConfirmed) {
+        Swal.fire({
+          title: "Deleted!",
+          text: "Instructor data has been deleted.",
+          icon: "success"
+        });
+
+        axios
+        .delete(
+          `${
+            import.meta.env.VITE_REACT_APP_API_URL
+          }/api/instructor/${instructor_id}/delete`,
+          { data: { instructor_pic } }
+        )
+        .then((response) => {
+          console.log(response.data);
+          getInstructorData();
+        })
+        .catch((error) => {
+          console.error("Error deleting user:", error);
+        });
+
+      }
+    });
   };
 
   const handleAdd = () => {
@@ -395,10 +495,14 @@ function AdminInstructors() {
                           </div>
 
                           <div className="text-center pt-3">
-                            <img src={formData.instructor_pic} className="rounded w-25 img-thumbnail" alt="..." />
+                            <img
+                              src={formData.instructor_pic}
+                              className="rounded w-25 img-thumbnail"
+                              alt="..."
+                            />
                           </div>
                           <div className="modal-body">
-                            <form className="row g-3" onSubmit={handleSubmit}>
+                            <form className="row g-3" onSubmit={handleUpdate}>
                               <div className="col-md-8">
                                 <div className="form-floating">
                                   <input
