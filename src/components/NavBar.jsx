@@ -1,11 +1,17 @@
 import { useState } from 'react';
 import Offcanvas from 'react-bootstrap/Offcanvas';
+import useAuthUser from 'react-auth-kit/hooks/useAuthUser';
+import useSignOut from 'react-auth-kit/hooks/useSignOut';
 
 function NavBar() {
     const [show, setShow] = useState(false);
 
     const handleClose = () => setShow(false);
     const handleShow = () => setShow(true);
+
+    const auth = useAuthUser()
+
+    const signOut = useSignOut()
 
   return (
     <>
@@ -32,7 +38,7 @@ function NavBar() {
                     className="rounded-circle"
                     />
                     <span className="d-none d-md-block ps-2">
-                    Gitalan, T. &nbsp; (Instructor)
+                    {auth?.name}
                     </span>
                 </a>
                 {/* End Profile Iamge Icon */}
@@ -84,7 +90,7 @@ function NavBar() {
                     </li>
 
                     <li className="nav-item">
-                        <a className="nav-link collapsed" href="">
+                        <a className="nav-link collapsed" href="/" onClick={() => signOut()}>
                         <i className="bi bi-box-arrow-left" />
                         <span>Sign Out</span>
                         </a>

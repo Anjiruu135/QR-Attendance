@@ -1,6 +1,3 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
 import './App.css'
 import {
   createBrowserRouter,
@@ -18,6 +15,18 @@ import AdminNavBar from './components/AdminNavBar';
 import AdminInstructors from './pages/AdminInstructors';
 import AdminAttendance from './pages/AdminAttendance';
 
+import createStore from 'react-auth-kit/createStore';
+import AuthProvider from 'react-auth-kit';
+import RequireAuth from '@auth-kit/react-router/RequireAuth';
+
+const store = createStore({
+  authName:'_auth',
+  authType:'cookie',
+  cookieDomain: window.location.hostname,
+  cookieSecure: window.location.protocol === 'https:',
+});
+
+
 const router = createBrowserRouter([
   {
     path: "/",
@@ -30,11 +39,11 @@ const router = createBrowserRouter([
   {
     path: "/home",
     element: (
-      <>
+      <RequireAuth fallbackPath={'/'}>
         <NavBar />
         <Dashboard />
         <Footer />
-      </>
+      </RequireAuth>
     ),
   },
   {
@@ -50,11 +59,11 @@ const router = createBrowserRouter([
   {
     path: "/students",
     element: (
-      <>
+      <RequireAuth fallbackPath={'/'}>
         <NavBar />
         <Students />
         <Footer />
-      </>
+      </RequireAuth>
     ),
   },
   {
@@ -70,11 +79,11 @@ const router = createBrowserRouter([
   {
     path: "/attendance",
     element: (
-      <>
+      <RequireAuth fallbackPath={'/'}>
         <NavBar />
         <Attendance />
         <Footer />
-      </>
+      </RequireAuth>
     ),
   },
   {
@@ -98,13 +107,14 @@ const router = createBrowserRouter([
 ]);
 
 function App() {
-  const [count, setCount] = useState(0)
 
   return (
     <>
-      <div className="App">
-        <RouterProvider router={router} />
-      </div>
+      <AuthProvider store={store}>
+        <div className="App">
+          <RouterProvider router={router} />
+        </div>
+      </AuthProvider>
     </>
   )
 }

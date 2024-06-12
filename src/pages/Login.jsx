@@ -1,12 +1,15 @@
 import React, { useState } from "react";
 import axios from "axios";
 import Swal from 'sweetalert2'
+import useSignIn from 'react-auth-kit/hooks/useSignIn';
 
 function Login() {
   const [loginData, setLoginData] = useState({
     instructor_id: "",
     password: "",
   });
+
+  const signIn = useSignIn();
 
   axios.defaults.withCredentials = true;
 
@@ -23,14 +26,26 @@ function Login() {
       );
 
       if (response.status === 200) {
-        const { message } = response.data;
+        const { message, instructor_id, token, user_name } = response.data;
 
         if (message === "Login successful for user") {
           Swal.fire({
             title: "Login Successful!",
             text: "Welcome User!",
-            icon: "success"
+            icon: "success",
           });
+
+          signIn({
+            auth: {
+              token: token,
+              type: 'Bearer',
+            },
+            userState: {
+              name: user_name,
+              uid: instructor_id,
+            }
+          })
+
           window.location.href = "/home";
         } else if (message === "Login successful for admin") {
           Swal.fire({
@@ -54,7 +69,6 @@ function Login() {
           title: "Oops...",
           text: "Something went wrong!",
         });
-      console.error("Error during login:", error.message);
     }
   };
 

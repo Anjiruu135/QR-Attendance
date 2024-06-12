@@ -127,8 +127,8 @@ function AdminInstructors() {
       .then((response) => {
         console.log(response.data);
         Swal.fire({
-          title: "Good job!",
-          text: "You clicked the button!",
+          title: "Success!",
+          text: "Instructor successfully added!",
           icon: "success"
         });
         getInstructorData();
@@ -177,7 +177,7 @@ function AdminInstructors() {
         console.log(response.data);
         Swal.fire({
           title: "Success!",
-          text: "Instructor added successfully!",
+          text: "Instructor info updated successfully!",
           icon: "success"
         });
         getInstructorData();

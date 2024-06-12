@@ -2,42 +2,51 @@ import express from "express";
 import { db } from "../../db.js";
 import multer from "multer";
 import fs from "fs";
+import jwt from 'jsonwebtoken';
 
 const router = express.Router();
 
 const storage = multer.diskStorage({
-    destination: (req, file, cb) => {
-      return cb(null, './public/uploads')
-    },
-    filename: (req, file, cb) => {
-      return cb(null, `${Date.now()}_${file.originalname}`);
+  destination: (req, file, cb) => {
+    if (file.fieldname === 'student_pic') {
+      cb(null, './public/uploads/student');
+    } else if (file.fieldname === 'qr_code') {
+      cb(null, './public/uploads/qrcode');
+    } else if (file.fieldname === 'instructor_pic') {
+      cb(null, './public/uploads/instructor');
     }
-  })
+  },
+  filename: (req, file, cb) => {
+    cb(null, `${Date.now()}-${file.originalname}`);
+  }
+});
   
 const upload = multer({
     storage: storage
-})
+});
 
 router.post("/api/login", (req, res) => {
   const { instructor_id, password } = req.body;
 
-  db.query("SELECT * FROM tbl_users WHERE instructor_id = ? AND password = ?", [instructor_id, password], (error, result) => {
+  const sql = 'SELECT tbl_users.*, last_name, first_name FROM tbl_users JOIN tbl_instructors ON tbl_users.instructor_id = tbl_instructors.instructor_id WHERE tbl_users.instructor_id = ? AND password = ?;';
+  db.query(sql, [instructor_id, password], (error, result) => {
       if (error) {
         console.log(error);
         res.status(500).send("Error fetching data");
       } else {
         if (result.length > 0) {
-          const { instructor_id, user_type } = result[0];
+          const { instructor_id, user_type, last_name, first_name } = result[0];
+          const token = jwt.sign({ instructor_id, user_type }, process.env.JWT_SECRET, { expiresIn: '24h' });
+
           if (user_type === "User") {
-            console.log(instructor_id);
-            console.log(user_type);
             res.status(200).send({
               user_type: user_type,
               message: "Login successful for user",
+              instructor_id: instructor_id,
+              token: token,
+              user_name: `${last_name}, ${first_name}`,
             });
           } else if (user_type === "Admin") {
-            console.log(instructor_id);
-            console.log(user_type);
             res.status(200).send({
               user_type: user_type,
               message: "Login successful for admin",
@@ -81,7 +90,7 @@ router.delete("/api/instructor/:instructor_id/delete", (req, res) => {
 
 router.post("/api/instructor/update", upload.single('instructor_pic'), (req, res) => {
     const formData = req.body;
-    const filePath = req.file ? `/uploads/${req.file.filename}` : null;
+    const filePath = req.file ? `/uploads/instructor/${req.file.filename}` : null;
 
     if (filePath && formData.instructorPicToUpdate) {
       fs.unlink(`./public${formData.instructorPicToUpdate}`, (err) => {
@@ -132,7 +141,7 @@ router.post("/api/instructor/update", upload.single('instructor_pic'), (req, res
 
 router.post("/api/instructor/add", upload.single('instructor_pic'), (req, res) => {
   const formData = req.body;
-  const filePath = `/uploads/${req.file.filename}`;
+  const filePath = `/uploads/instructor/${req.file.filename}`;
   const instructorData = {
       instructor_id: formData.instructor_id,
       last_name: formData.last_name,
@@ -179,6 +188,45 @@ router.get("/api/instructors", (req, res) => {
           res.json(results);
         }
       });
+});
+
+router.post("/api/student/add", upload.fields([{ name: 'student_pic', maxCount: 1 }, { name: 'qr_code', maxCount: 1 }]), (req, res) => {
+  const formData = req.body;
+  const studentPicPath = `/uploads/student/${req.files['student_pic'][0].filename}`;
+  const qrCodePath = `/uploads/qrcode/${req.files['qr_code'][0].filename}`;
+
+  const studentData = {
+      student_id: formData.student_id,
+      instructor_id: formData.instructor_id,
+      last_name: formData.last_name,
+      first_name: formData.first_name,
+      middle_name: formData.middle_name,
+      student_pic: studentPicPath,
+      address: formData.address,
+      contact: formData.contact,
+      qr_code: qrCodePath,
+  };
+
+  const sql = 'INSERT INTO tbl_students SET ?';
+  db.query(sql, studentData, (err, result) => {
+      if (err) {
+          console.error('Route Error:', err);
+          res.status(500).send('Route Error');
+          return;
+      }
+      res.status(200).send('Insert Successful');
+  });
+});
+
+router.get("/api/students", (req, res) => {
+  db.query("SELECT * FROM tbl_students", (error, results) => {
+      if (error) {
+        console.log(error);
+        res.status(500).send("Error fetching data");
+      } else {
+        res.json(results);
+      }
+    });
 });
 
 export { router };
