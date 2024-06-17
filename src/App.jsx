@@ -47,7 +47,7 @@ const router = createBrowserRouter([
   {
     path: "/home",
     element: (
-      <RequireAuth authType='user' fallbackPath={'/'}>
+      <RequireAuth fallbackPath={'/'} authType="user">
         <NavBar />
         <Dashboard />
         <Footer />
@@ -57,7 +57,7 @@ const router = createBrowserRouter([
   {
     path: "/admin",
     element: (
-      <RequireAuth authType='admin' fallbackPath={'/'}>
+      <RequireAuth fallbackPath={'/'} authType='admin'>
         <AdminNavBar />
         <AdminDashboard />
         <Footer />
@@ -67,7 +67,7 @@ const router = createBrowserRouter([
   {
     path: "/students",
     element: (
-      <RequireAuth authType='user' fallbackPath={'/'}>
+      <RequireAuth fallbackPath={'/'} authType='user'>
         <NavBar />
         <Students />
         <Footer />
@@ -77,7 +77,7 @@ const router = createBrowserRouter([
   {
     path: "/admin_instructors",
     element: (
-      <RequireAuth authType='admin' fallbackPath={'/'}>
+      <RequireAuth fallbackPath={'/'} authType='admin'>
         <AdminNavBar />
         <AdminInstructors />
         <Footer />
@@ -87,7 +87,7 @@ const router = createBrowserRouter([
   {
     path: "/attendance",
     element: (
-      <RequireAuth authType='user' fallbackPath={'/'}>
+      <RequireAuth fallbackPath={'/'} authType='user'>
         <NavBar />
         <Attendance />
         <Footer />
@@ -97,7 +97,7 @@ const router = createBrowserRouter([
   {
     path: "/admin_attendance",
     element: (
-      <RequireAuth authType='admin' fallbackPath={'/'}>
+      <RequireAuth fallbackPath={'/'} authType='admin'>
         <AdminNavBar />
         <AdminAttendance />
         <Footer />
@@ -107,7 +107,7 @@ const router = createBrowserRouter([
   {
     path: "/scanner",
     element: (
-      <RequireAuth authType='user' fallbackPath={'/'}>
+      <RequireAuth fallbackPath={'/'} authType='user'>
         <NavBar />
         <Scanner />
         <Footer />

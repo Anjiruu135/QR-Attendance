@@ -418,7 +418,7 @@ router.get("/api/attendance", (req, res) => {
 router.get("/api/dashboard/info", (req, res) => {
   const date = req.query.date;
   const uid = req.query.uid;
-  const sql = `SELECT COALESCE(COUNT(DISTINCT a.student_id), 0) AS present, (SELECT COUNT(student_id) FROM tbl_students WHERE instructor_id = '${uid}') AS total_students FROM tbl_students s LEFT JOIN tbl_attendance a ON s.student_id = a.student_id AND a.date = '${date}' WHERE s.instructor_id = '${uid}' GROUP BY a.date;`;
+  const sql = `SELECT COALESCE(present_count, 0) AS present, COALESCE(total_count, 0) AS total_students FROM (SELECT (SELECT COUNT(DISTINCT a.student_id) FROM tbl_students s LEFT JOIN tbl_attendance a ON s.student_id = a.student_id AND a.date = '${date}' WHERE s.instructor_id = '${uid}') AS present_count,(SELECT COUNT(student_id) FROM tbl_students WHERE instructor_id = '${uid}') AS total_count) AS counts;`;
   db.query(sql, (error, results) => {
       if (error) {
         console.log(error);
