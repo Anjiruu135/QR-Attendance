@@ -26,7 +26,7 @@ function Login() {
       );
 
       if (response.status === 200) {
-        const { message, instructor_id, token, user_name } = response.data;
+        const { message, instructor_id, token, user_name, section, user_type } = response.data;
 
         if (message === "Login successful for user") {
           Swal.fire({
@@ -34,7 +34,6 @@ function Login() {
             text: "Welcome User!",
             icon: "success",
           });
-
           signIn({
             auth: {
               token: token,
@@ -43,9 +42,10 @@ function Login() {
             userState: {
               name: user_name,
               uid: instructor_id,
-            }
+              section: section,
+            },
+            authType: user_type.toLowerCase(),
           })
-
           window.location.href = "/home";
         } else if (message === "Login successful for admin") {
           Swal.fire({
@@ -53,6 +53,18 @@ function Login() {
             text: "Welcome Admin!",
             icon: "success"
           });
+          signIn({
+            auth: {
+              token: token,
+              type: 'Bearer',
+            },
+            userState: {
+              name: user_name,
+              uid: instructor_id,
+              section: section,
+            },
+            authType: user_type.toLowerCase(),
+          })
           window.location.href = "/admin";
         } else if (message === "Invalid Login") {
           Swal.fire({

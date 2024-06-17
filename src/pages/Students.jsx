@@ -1,20 +1,23 @@
-import React, { useMemo, useState, useEffect } from "react";
+import React, { useMemo, useState, useEffect, useRef } from "react";
 import { useTable, useSortBy, useGlobalFilter } from "react-table";
-import useAuthUser from 'react-auth-kit/hooks/useAuthUser';
+import useAuthUser from "react-auth-kit/hooks/useAuthUser";
 import axios from "axios";
-import Swal from 'sweetalert2'
-import { QRCodeSVG } from 'qrcode.react';
-import ReactDOMServer from 'react-dom/server';
+import Swal from "sweetalert2";
+import { QRCodeSVG, QRCodeCanvas } from "qrcode.react";
+import ReactDOMServer from "react-dom/server";
 
 function Students() {
-  const auth = useAuthUser()
+  const auth = useAuthUser();
   // Fetching
   const [studentData, setStudentData] = useState([]);
 
   const getStudentData = async () => {
     try {
       const response = await axios.get(
-        `${import.meta.env.VITE_REACT_APP_API_URL}/api/students`
+        `${import.meta.env.VITE_REACT_APP_API_URL}/api/students`,
+        {
+          params: { uid: auth?.uid },
+        }
       );
       setStudentData(response.data);
     } catch (error) {
@@ -60,7 +63,7 @@ function Students() {
         ),
       },
     ],
-    []
+    [studentData]
   );
 
   const {
@@ -72,6 +75,22 @@ function Students() {
     setGlobalFilter,
     state: { globalFilter },
   } = useTable({ columns, data }, useGlobalFilter, useSortBy);
+
+  //Download
+  const qrRef = useRef(null);
+
+  const downloadQRCode = () => {
+    const canvas = qrRef.current.querySelector("canvas");
+    const pngUrl = canvas
+      .toDataURL("image/png")
+      .replace("image/png", "image/octet-stream");
+    const downloadLink = document.createElement("a");
+    downloadLink.href = pngUrl;
+    downloadLink.download = `${formData.student_id}-${formData.last_name}.png`;
+    document.body.appendChild(downloadLink);
+    downloadLink.click();
+    document.body.removeChild(downloadLink);
+  };
 
   //Form Handling
   const [file, setFile] = useState();
@@ -102,9 +121,13 @@ function Students() {
   };
 
   const generateQRBlob = () => {
-    const qrValue = `${formData.student_id}-${formData.last_name}, ${formData.first_name} ${formData.middle_name}`;
-    const svgString = ReactDOMServer.renderToString(<QRCodeSVG value={qrValue} />);
-    const svgBlob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
+    const qrValue = `${formData.student_id}`;
+    const svgString = ReactDOMServer.renderToString(
+      <QRCodeSVG value={qrValue} />
+    );
+    const svgBlob = new Blob([svgString], {
+      type: "image/svg+xml;charset=utf-8",
+    });
     return svgBlob;
   };
 
@@ -124,18 +147,29 @@ function Students() {
     const qrBlob = generateQRBlob();
     formDataToSend.append("qr_code", qrBlob, `${formData.student_id}.svg`);
 
-    axios
+    const form = e.target;
+    if (form.checkValidity()) {
+      axios
       .post(
         `${import.meta.env.VITE_REACT_APP_API_URL}/api/student/add`,
         formDataToSend
       )
       .then((response) => {
-        console.log(response.data);
-        Swal.fire({
-          title: "Success!",
-          text: "Student successfully added!",
-          icon: "success"
-        });
+        const { message } = response.data;
+        if (message === "Valid ID") {
+          Swal.fire({
+            title: "Success!",
+            text: "Student successfully added!",
+            icon: "success",
+          });
+          getStudentData();
+        } else if (message === "Invalid ID") {
+          Swal.fire({
+            icon: "error",
+            title: "Add Error!",
+            text: "ID Already Taken!",
+          });
+        }
       })
       .catch((error) => {
         console.error("Error:", error);
@@ -145,6 +179,118 @@ function Students() {
           text: "Something went wrong!",
         });
       });
+
+      const modal = document.getElementById("Modal-Add");
+      const bootstrapModal = bootstrap.Modal.getInstance(modal);
+      if (bootstrapModal) {
+        bootstrapModal.hide();
+      } else {
+        console.error("Bootstrap modal instance not found");
+      }
+      
+      const backdrop = document.querySelector('.modal-backdrop');
+      if (backdrop) {
+        backdrop.parentNode.removeChild(backdrop);
+      }
+
+    } else {
+      console.log("Form validation failed");
+    }
+  };
+
+  const handleEdit = (index) => {
+    const selectedStudent = studentData[index];
+    setSelectedIndex(index);
+    setFormData(selectedStudent);
+  };
+
+  const handleUpdate = (e) => {
+    e.preventDefault();
+
+    const formDataToSend = new FormData();
+    formDataToSend.append("student_id", formData.student_id);
+    formDataToSend.append("instructor_id", auth?.uid);
+    formDataToSend.append("last_name", formData.last_name);
+    formDataToSend.append("first_name", formData.first_name);
+    formDataToSend.append("middle_name", formData.middle_name);
+    formDataToSend.append("student_pic", file);
+    formDataToSend.append("address", formData.address);
+    formDataToSend.append("contact", formData.contact);
+
+    const qrBlob = generateQRBlob();
+    formDataToSend.append("qr_code", qrBlob, `${formData.student_id}.svg`);
+
+    const selectedStudent = studentData[selectedIndex];
+    formDataToSend.append("studentToUpdate", selectedStudent.student_id);
+    formDataToSend.append("studentPicToUpdate", selectedStudent.student_pic);
+    formDataToSend.append("studentQRToUpdate", selectedStudent.qr_code);
+
+    axios
+      .post(
+        `${import.meta.env.VITE_REACT_APP_API_URL}/api/student/update`,
+        formDataToSend
+      )
+      .then((response) => {
+        console.log(response.data);
+        Swal.fire({
+          title: "Success!",
+          text: "Student info updated successfully!",
+          icon: "success",
+        });
+        getStudentData();
+      })
+      .catch((error) => {
+        console.error("Error:", error);
+        Swal.fire({
+          icon: "error",
+          title: "Oops...",
+          text: "Something went wrong!",
+        });
+      });
+  };
+
+  const handleRemove = (index) => {
+    const selectedStudent = studentData[index];
+    const student_id = selectedStudent.student_id;
+    const student_pic = selectedStudent.student_pic;
+    const qr_code = selectedStudent.qr_code;
+
+    Swal.fire({
+      title: "Are you sure?",
+      text: "You won't be able to revert this!",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#3085d6",
+      cancelButtonColor: "#d33",
+      confirmButtonText: "Yes, delete it!",
+    }).then((result) => {
+      if (result.isConfirmed) {
+        Swal.fire({
+          title: "Deleted!",
+          text: "Student data has been deleted.",
+          icon: "success",
+        });
+
+        axios
+          .delete(
+            `${
+              import.meta.env.VITE_REACT_APP_API_URL
+            }/api/student/${student_id}/delete`,
+            { data: { student_pic, qr_code } }
+          )
+          .then((response) => {
+            console.log(response.data);
+            getStudentData();
+          })
+          .catch((error) => {
+            console.error("Error deleting user:", error);
+          });
+      }
+    });
+  };
+
+  const handleAdd = () => {
+    setFormData(initialStudentData);
   };
 
   return (
@@ -180,12 +326,15 @@ function Students() {
                         type="button"
                         className="btn btn-primary btn-sm mx-3"
                         data-bs-toggle="modal"
-                        data-bs-target="#Modal"
+                        data-bs-target="#Modal-Add"
+                        onClick={handleAdd}
                       >
                         Add Student
                       </button>
                     </span>
-                    <div className="modal fade" id="Modal" tabIndex={-1}>
+
+                    {/* Start Add Student Modal*/}
+                    <div className="modal fade" id="Modal-Add" tabIndex={-1}>
                       <div className="modal-dialog modal-lg">
                         <div className="modal-content">
                           <div className="modal-header">
@@ -209,6 +358,7 @@ function Students() {
                                     name="student_id"
                                     value={formData.student_id}
                                     onChange={handleChange}
+                                    required
                                   />
                                   <label htmlFor="floatingStudentID">
                                     Student ID
@@ -222,6 +372,8 @@ function Students() {
                                     className="form-control"
                                     id="floatingSection"
                                     placeholder="Section"
+                                    value={auth?.section}
+                                    readOnly
                                   />
                                   <label htmlFor="floatingSection">
                                     Section
@@ -238,6 +390,7 @@ function Students() {
                                     name="last_name"
                                     value={formData.last_name}
                                     onChange={handleChange}
+                                    required
                                   />
                                   <label htmlFor="floatingLastname">
                                     Last Name
@@ -254,6 +407,7 @@ function Students() {
                                     name="first_name"
                                     value={formData.first_name}
                                     onChange={handleChange}
+                                    required
                                   />
                                   <label htmlFor="floatingFirstname">
                                     First Name
@@ -270,6 +424,7 @@ function Students() {
                                     name="middle_name"
                                     value={formData.middle_name}
                                     onChange={handleChange}
+                                    required
                                   />
                                   <label htmlFor="floatingMiddlename">
                                     Middle Name
@@ -278,7 +433,7 @@ function Students() {
                               </div>
                               <div className="row mb-2 mt-4">
                                 <label
-                                  htmlFor="inputNumber"
+                                  htmlFor="formFile"
                                   className="col-sm-4 col-form-label"
                                 >
                                   Upload Student Picture
@@ -290,6 +445,7 @@ function Students() {
                                     id="formFile"
                                     accept="image/*"
                                     onChange={(e) => setFile(e.target.files[0])}
+                                    required
                                   />
                                 </div>
                               </div>
@@ -303,6 +459,7 @@ function Students() {
                                     name="address"
                                     value={formData.address}
                                     onChange={handleChange}
+                                    required
                                   />
                                   <label htmlFor="floatingAddress">
                                     Address
@@ -319,6 +476,211 @@ function Students() {
                                     name="contact"
                                     value={formData.contact}
                                     onChange={handleChange}
+                                    required
+                                    pattern="\d+"
+                                    title="Please enter a valid number"
+                                  />
+                                  <label htmlFor="floatingContact">
+                                    Contact
+                                  </label>
+                                </div>
+                              </div>
+
+                              <div className="modal-footer">
+                                <button
+                                  type="button"
+                                  className="btn btn-secondary"
+                                  data-bs-dismiss="modal"
+                                >
+                                  Close
+                                </button>
+                                <button
+                                  type="submit"
+                                  className="btn btn-primary"
+                                >
+                                  Add Student
+                                </button>
+                              </div>
+                            </form>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    {/* End Add Student Modal*/}
+
+                    {/* Start Edit Student Modal*/}
+                    <div className="modal fade" id="Modal-Edit" tabIndex={-1}>
+                      <div className="modal-dialog modal-lg">
+                        <div className="modal-content">
+                          <div className="modal-header">
+                            <h5 className="modal-title">Update Student Info</h5>
+                            <button
+                              type="button"
+                              className="btn-close"
+                              data-bs-dismiss="modal"
+                              aria-label="Close"
+                            />
+                          </div>
+
+                          <div className="d-flex justify-content-center align-items-center pt-2">
+                            <span className="me-2">
+                              <img
+                                src={formData.student_pic}
+                                className="rounded img-thumbnail"
+                                alt="Student"
+                                style={{ width: "150px" }}
+                              />
+                            </span>
+                            <span className="ms-2">
+                              <div className="mx-2" ref={qrRef}>
+                                <QRCodeCanvas
+                                  value={`${formData.student_id}`}
+                                />
+                              </div>
+                              <button
+                                type="button"
+                                className="btn btn-secondary btn-sm mt-2"
+                                onClick={downloadQRCode}
+                              >
+                                Download QR Code
+                              </button>
+                            </span>
+                          </div>
+
+                          <div className="modal-body">
+                            <form className="row g-3" onSubmit={handleUpdate}>
+                              <div className="col-md-8">
+                                <div className="form-floating">
+                                  <input
+                                    type="studentID"
+                                    className="form-control"
+                                    id="floatingStudentID"
+                                    placeholder="Student ID"
+                                    name="student_id"
+                                    value={formData.student_id}
+                                    onChange={handleChange}
+                                    required
+                                    readOnly
+                                  />
+                                  <label htmlFor="floatingStudentID">
+                                    Student ID
+                                  </label>
+                                </div>
+                              </div>
+                              <div className="col-md-4">
+                                <div className="form-floating">
+                                  <input
+                                    type="section"
+                                    className="form-control"
+                                    id="floatingSection"
+                                    placeholder="Section"
+                                    value={auth?.section}
+                                    readOnly
+                                  />
+                                  <label htmlFor="floatingSection">
+                                    Section
+                                  </label>
+                                </div>
+                              </div>
+                              <div className="col-md-4">
+                                <div className="form-floating">
+                                  <input
+                                    type="lastname"
+                                    className="form-control"
+                                    id="floatingLastname"
+                                    placeholder="Last Name"
+                                    name="last_name"
+                                    value={formData.last_name}
+                                    onChange={handleChange}
+                                    required
+                                  />
+                                  <label htmlFor="floatingLastname">
+                                    Last Name
+                                  </label>
+                                </div>
+                              </div>
+                              <div className="col-md-4">
+                                <div className="form-floating">
+                                  <input
+                                    type="firstname"
+                                    className="form-control"
+                                    id="floatingFirstname"
+                                    placeholder="First Name"
+                                    name="first_name"
+                                    value={formData.first_name}
+                                    onChange={handleChange}
+                                    required
+                                  />
+                                  <label htmlFor="floatingFirstname">
+                                    First Name
+                                  </label>
+                                </div>
+                              </div>
+                              <div className="col-md-4">
+                                <div className="form-floating">
+                                  <input
+                                    type="middlename"
+                                    className="form-control"
+                                    id="floatingMiddlename"
+                                    placeholder="Middle Name"
+                                    name="middle_name"
+                                    value={formData.middle_name}
+                                    onChange={handleChange}
+                                    required
+                                  />
+                                  <label htmlFor="floatingMiddlename">
+                                    Middle Name
+                                  </label>
+                                </div>
+                              </div>
+                              <div className="row mb-2 mt-4">
+                                <label
+                                  htmlFor="formFile"
+                                  className="col-sm-4 col-form-label"
+                                >
+                                  Upload Student Picture
+                                </label>
+                                <div className="col-sm-6">
+                                  <input
+                                    className="form-control"
+                                    type="file"
+                                    id="formFile"
+                                    accept="image/*"
+                                    onChange={(e) => setFile(e.target.files[0])}
+                                    required
+                                  />
+                                </div>
+                              </div>
+                              <div className="col-md-8">
+                                <div className="form-floating">
+                                  <input
+                                    type="address"
+                                    className="form-control"
+                                    id="floatingAddress"
+                                    placeholder="Address"
+                                    name="address"
+                                    value={formData.address}
+                                    onChange={handleChange}
+                                    required
+                                  />
+                                  <label htmlFor="floatingAddress">
+                                    Address
+                                  </label>
+                                </div>
+                              </div>
+                              <div className="col-md-4">
+                                <div className="form-floating">
+                                  <input
+                                    type="contact"
+                                    className="form-control"
+                                    id="floatingContact"
+                                    placeholder="Contact"
+                                    name="contact"
+                                    value={formData.contact}
+                                    onChange={handleChange}
+                                    required
+                                    pattern="\d+"
+                                    title="Please enter a valid number"
                                   />
                                   <label htmlFor="floatingContact">
                                     Contact
@@ -339,7 +701,7 @@ function Students() {
                                   className="btn btn-primary"
                                   data-bs-dismiss="modal"
                                 >
-                                  Add Student
+                                  Update Student Info
                                 </button>
                               </div>
                             </form>
@@ -347,7 +709,7 @@ function Students() {
                         </div>
                       </div>
                     </div>
-                    {/* End Extra Large Modal*/}
+                    {/* End Edit Student Modal*/}
                   </div>
 
                   <table {...getTableProps()} className="table table datatable">

@@ -14,14 +14,22 @@ import AdminDashboard from './pages/AdminDashboard';
 import AdminNavBar from './components/AdminNavBar';
 import AdminInstructors from './pages/AdminInstructors';
 import AdminAttendance from './pages/AdminAttendance';
+import Scanner from './pages/Scanner';
 
 import createStore from 'react-auth-kit/createStore';
 import AuthProvider from 'react-auth-kit';
 import RequireAuth from '@auth-kit/react-router/RequireAuth';
 
-const store = createStore({
-  authName:'_auth',
+const userStore = createStore({
+  authName:'_user_auth',
   authType:'cookie',
+  cookieDomain: window.location.hostname,
+  cookieSecure: window.location.protocol === 'https:',
+});
+
+const adminStore = createStore({
+  authName: '_admin_auth',
+  authType: 'cookie',
   cookieDomain: window.location.hostname,
   cookieSecure: window.location.protocol === 'https:',
 });
@@ -39,7 +47,7 @@ const router = createBrowserRouter([
   {
     path: "/home",
     element: (
-      <RequireAuth fallbackPath={'/'}>
+      <RequireAuth authType='user' fallbackPath={'/'}>
         <NavBar />
         <Dashboard />
         <Footer />
@@ -49,17 +57,17 @@ const router = createBrowserRouter([
   {
     path: "/admin",
     element: (
-      <>
+      <RequireAuth authType='admin' fallbackPath={'/'}>
         <AdminNavBar />
         <AdminDashboard />
         <Footer />
-      </>
+      </RequireAuth>
     ),
   },
   {
     path: "/students",
     element: (
-      <RequireAuth fallbackPath={'/'}>
+      <RequireAuth authType='user' fallbackPath={'/'}>
         <NavBar />
         <Students />
         <Footer />
@@ -69,17 +77,17 @@ const router = createBrowserRouter([
   {
     path: "/admin_instructors",
     element: (
-      <>
+      <RequireAuth authType='admin' fallbackPath={'/'}>
         <AdminNavBar />
         <AdminInstructors />
         <Footer />
-      </>
+      </RequireAuth>
     ),
   },
   {
     path: "/attendance",
     element: (
-      <RequireAuth fallbackPath={'/'}>
+      <RequireAuth authType='user' fallbackPath={'/'}>
         <NavBar />
         <Attendance />
         <Footer />
@@ -89,11 +97,21 @@ const router = createBrowserRouter([
   {
     path: "/admin_attendance",
     element: (
-      <>
+      <RequireAuth authType='admin' fallbackPath={'/'}>
         <AdminNavBar />
         <AdminAttendance />
         <Footer />
-      </>
+      </RequireAuth>
+    ),
+  },
+  {
+    path: "/scanner",
+    element: (
+      <RequireAuth authType='user' fallbackPath={'/'}>
+        <NavBar />
+        <Scanner />
+        <Footer />
+      </RequireAuth>
     ),
   },
   {
@@ -110,10 +128,12 @@ function App() {
 
   return (
     <>
-      <AuthProvider store={store}>
-        <div className="App">
-          <RouterProvider router={router} />
-        </div>
+      <AuthProvider store={userStore}>
+        <AuthProvider store={adminStore}>
+          <div className="App">
+            <RouterProvider router={router} />
+          </div>
+        </AuthProvider>
       </AuthProvider>
     </>
   )

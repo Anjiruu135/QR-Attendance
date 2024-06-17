@@ -1,39 +1,109 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import { useTable, useSortBy, useGlobalFilter } from "react-table";
+import axios from "axios";
+import useAuthUser from 'react-auth-kit/hooks/useAuthUser';
 
 function Dashboard() {
-  const data = useMemo(
-    () => [
-      {
-        studentID: "2021-03666",
-        lastname: "Gitalan",
-        firstname: "Tedd Angelo",
-        middlename: "Jamorol",
-      },
-      {
-        studentID: "2021-01091",
-        lastname: "Catalan",
-        firstname: "Wilfred",
-        middlename: "Dumon",
-      },
-      {
-        studentID: "2021-03667",
-        lastname: "Cadiz",
-        firstname: "Eugine Bryan",
-        middlename: "Son",
-      },
-    ],
-    []
-  );
+  const auth = useAuthUser();
+  // Fetch Dashboard Data
+  const [dashboardData, setDashboardData] = useState([]);
+
+  const getDashboardData = async () => {
+    const now = new Date();
+    const date = now.toISOString().split("T")[0];
+    const time = now.toTimeString().split(" ")[0];
+
+    try {
+      const response = await axios.get(
+        `${import.meta.env.VITE_REACT_APP_API_URL}/api/dashboard/info`,
+        { 
+          params: { 
+            date: date, 
+            uid: auth?.uid 
+          }
+        }
+      );
+      setDashboardData(response.data[0]);
+    } catch (error) {
+      console.error("Error fetching data:", error);
+    }
+  };
+
+  useEffect(() => {
+    getDashboardData();
+  }, []);
+
+
+  // Fetch Dashboard Attendance
+  const [attendanceData, setAttendanceData] = useState([]);
+  const getAttendanceData = async () => {
+    try {
+      const response = await axios.get(
+        `${import.meta.env.VITE_REACT_APP_API_URL}/api/attendance`,
+        { 
+          params: { uid: auth?.uid }
+        }
+      );
+      const dataWithPercentage = response.data.map((item) => {
+        const percentage = (item.present / item.total_students) * 100;
+        return {
+          ...item,
+          percentage: percentage.toFixed(2),
+          remarks: percentage >= 75 ? "Satisfactory" : "Needs Improvement",
+        };
+      });
+      setAttendanceData(dataWithPercentage);
+    } catch (error) {
+      console.error("Error fetching data:", error);
+    }
+  };
+
+  useEffect(() => {
+    getAttendanceData();
+  }, []);
+
+  const data = useMemo(() => attendanceData, [attendanceData]);
 
   const columns = useMemo(
     () => [
-      { Header: "Student ID", accessor: "studentID" },
-      { Header: "Last Name", accessor: "lastname" },
-      { Header: "First Name", accessor: "firstname" },
-      { Header: "Middle Name", accessor: "middlename" },
+      { Header: "Date", accessor: "date" },
+      { Header: "Present Count", accessor: "present" },
+      {
+        Header: "Attendance Percentage",
+        accessor: "percentage",
+        Cell: ({ value }) => {
+          const percentage = parseFloat(value);
+          return (
+            <div
+              style={{
+                position: "relative",
+                width: "100%",
+                color: "white",
+                backgroundColor: "rgb(225,225,225)",
+                borderRadius: "12px",
+              }}
+            >
+              <div
+                style={{
+                  width: `${percentage}%`,
+                  backgroundColor:
+                    percentage > 50 ? "rgb(10,110,250)" : "rgb(235,30,30)",
+                  height: "100%",
+                  borderRadius: "12px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                {value}%
+              </div>
+            </div>
+          );
+        },
+      },
+      { Header: "Remarks", accessor: "remarks" },
     ],
-    []
+    [attendanceData]
   );
 
   const {
@@ -78,7 +148,7 @@ function Dashboard() {
                           <i className="bi bi-people" />
                         </div>
                         <div className="ps-3">
-                          <h6>145</h6>
+                          <h6>{dashboardData.total_students}</h6>
                         </div>
                       </div>
                     </div>
@@ -97,7 +167,7 @@ function Dashboard() {
                           <i className="bi bi-calendar-check" />
                         </div>
                         <div className="ps-3">
-                          <h6>99</h6>
+                          <h6>{dashboardData.present}</h6>
                         </div>
                       </div>
                     </div>

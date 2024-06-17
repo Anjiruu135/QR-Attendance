@@ -485,7 +485,7 @@ function AdminInstructors() {
                       <div className="modal-dialog modal-lg">
                         <div className="modal-content">
                           <div className="modal-header">
-                            <h5 className="modal-title">Edit Instructor</h5>
+                            <h5 className="modal-title">Update Instructor Info</h5>
                             <button
                               type="button"
                               className="btn-close"

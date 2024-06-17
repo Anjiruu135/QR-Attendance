@@ -1,20 +1,67 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import { useTable, useSortBy, useGlobalFilter } from "react-table";
+import axios from "axios";
+import useAuthUser from "react-auth-kit/hooks/useAuthUser";
 
 function Attendance() {
-  const data = useMemo(
-    () => [
-      { date: "2024/06/04", present: "1", percentage: "33%", remarks: "Poor" },
-      { date: "2024/06/05", present: "2", percentage: "67%", remarks: "Fair" },
-      {
-        date: "2024/06/06",
-        present: "3",
-        percentage: "100%",
-        remarks: "Excellent",
-      },
-    ],
-    []
-  );
+  const [attendanceData, setAttendanceData] = useState([]);
+  const [selectedAttendance, setSelectedAttendance] = useState(null);
+  const auth = useAuthUser();
+
+  // Fetch Attendance
+  const getAttendanceData = async () => {
+    try {
+      const response = await axios.get(
+        `${import.meta.env.VITE_REACT_APP_API_URL}/api/attendance`,
+        { 
+          params: { uid: auth?.uid }
+        }
+      );
+      const dataWithPercentage = response.data.map((item) => {
+        const percentage = (item.present / item.total_students) * 100;
+        return {
+          ...item,
+          percentage: percentage.toFixed(2),
+          remarks: percentage >= 75 ? "Satisfactory" : "Needs Improvement",
+        };
+      });
+      setAttendanceData(dataWithPercentage);
+    } catch (error) {
+      console.error("Error fetching data:", error);
+    }
+  };
+
+  useEffect(() => {
+    getAttendanceData();
+  }, []);
+
+  // Fetch Attendance Details
+  const [attendanceDetailsData, setAttendanceDetailsData] = useState([]);
+
+  const getAttendanceDetailsData = async () => {
+    try {
+      console.log(selectedAttendance.date)
+      const response = await axios.get(
+        `${import.meta.env.VITE_REACT_APP_API_URL}/api/attendance/students`,
+        { 
+          params: { 
+            date: selectedAttendance.date, 
+            uid: auth?.uid 
+          }
+        }
+      );
+      setAttendanceDetailsData(response.data);
+    } catch (error) {
+      console.error("Error fetching data:", error);
+    }
+  };
+
+  useEffect(() => {
+    getAttendanceDetailsData();
+  }, [selectedAttendance]);
+
+  // Attendance Datatable
+  const data = useMemo(() => attendanceData, [attendanceData]);
 
   const columns = useMemo(
     () => [
@@ -24,7 +71,7 @@ function Attendance() {
         Header: "Attendance Percentage",
         accessor: "percentage",
         Cell: ({ value }) => {
-          const percentage = parseInt(value, 10);
+          const percentage = parseFloat(value);
           return (
             <div
               style={{
@@ -47,15 +94,31 @@ function Attendance() {
                   justifyContent: "center",
                 }}
               >
-                {value}
+                {value}%
               </div>
             </div>
           );
         },
       },
       { Header: "Remarks", accessor: "remarks" },
+      {
+        Header: "Action",
+        Cell: ({ row }) => (
+          <div>
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm"
+              data-bs-toggle="modal"
+              data-bs-target="#Modal-View"
+              onClick={() => handleView(row.index)}
+            >
+              <i className="bi bi-info-circle" /> Details
+            </button>
+          </div>
+        ),
+      },
     ],
-    []
+    [attendanceData]
   );
 
   const {
@@ -67,6 +130,31 @@ function Attendance() {
     setGlobalFilter,
     state: { globalFilter },
   } = useTable({ columns, data }, useGlobalFilter, useSortBy);
+
+  const handleView = (index) => {
+    const selectedAttendance = attendanceData[index];
+    setSelectedAttendance(selectedAttendance);
+  };
+
+  // Attendance Details Datatable
+  const additionalData = useMemo(() => attendanceDetailsData, [attendanceDetailsData]);
+
+  const additionalColumns = useMemo(
+    () => [
+      { Header: "Student ID", accessor: "student_id" },
+      { Header: "Student Name", accessor: "fullname" },
+      { Header: "Time", accessor: "time" },
+    ],
+    []
+  );
+
+  const {
+    getTableProps: getAdditionalTableProps,
+    getTableBodyProps: getAdditionalTableBodyProps,
+    headerGroups: additionalHeaderGroups,
+    rows: additionalRows,
+    prepareRow: prepareAdditionalRow,
+  } = useTable({ columns: additionalColumns, data: additionalData });
 
   return (
     <>
@@ -89,7 +177,7 @@ function Attendance() {
               <div className="card">
                 <div className="card-body">
                   <div className="d-flex justify-content-between align-items-center">
-                    <h5 className="card-title">Attendane Record List</h5>
+                    <h5 className="card-title">Attendance Record List</h5>
                     <input
                       value={globalFilter || ""}
                       onChange={(e) => setGlobalFilter(e.target.value)}
@@ -138,6 +226,82 @@ function Attendance() {
                     </tbody>
                   </table>
                 </div>
+
+                {/* Start Edit Student Modal*/}
+                <div className="modal fade" id="Modal-View" tabIndex={-1}>
+                  <div className="modal-dialog modal-xl">
+                    <div className="modal-content">
+                      <div className="modal-header">
+                        <h5 className="modal-title">
+                          Attendance Record Details
+                        </h5>
+                        <button
+                          type="button"
+                          className="btn-close"
+                          data-bs-dismiss="modal"
+                          aria-label="Close"
+                        />
+                      </div>
+
+                      <div className="modal-body">
+                        {selectedAttendance && (
+                          <>
+                            <div className="d-flex justify-content-between">
+                              <div className="flex-fill text-center">
+                                <strong>Date:</strong> {selectedAttendance.date}
+                              </div>
+                              <div className="flex-fill text-center">
+                                <strong>Present Count:</strong>{" "}
+                                {selectedAttendance.present} of{" "}
+                                {selectedAttendance.total_students}
+                              </div>
+                              <div className="flex-fill text-center">
+                                <strong>Attendance Percentage:</strong>{" "}
+                                {selectedAttendance.percentage}%
+                              </div>
+                              <div className="flex-fill text-center">
+                                <strong>Remarks:</strong>{" "}
+                                {selectedAttendance.remarks}
+                              </div>
+                            </div>
+
+                            <div className="mt-2">
+                              <h5 className="card-title">Students: </h5>
+                              <table {...getAdditionalTableProps()} className="table table-bordered">
+                                <thead>
+                                  {additionalHeaderGroups.map((headerGroup) => (
+                                    <tr {...headerGroup.getHeaderGroupProps()}>
+                                      {headerGroup.headers.map((column) => (
+                                        <th {...column.getHeaderProps()}>
+                                          {column.render("Header")}
+                                        </th>
+                                      ))}
+                                    </tr>
+                                  ))}
+                                </thead>
+                                <tbody {...getAdditionalTableBodyProps()}>
+                                  {additionalRows.map((row) => {
+                                    prepareAdditionalRow(row);
+                                    return (
+                                      <tr {...row.getRowProps()}>
+                                        {row.cells.map((cell) => (
+                                          <td {...cell.getCellProps()}>
+                                            {cell.render("Cell")}
+                                          </td>
+                                        ))}
+                                      </tr>
+                                    );
+                                  })}
+                                </tbody>
+                              </table>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                {/* End Edit Student Modal*/}
               </div>
             </div>
           </div>

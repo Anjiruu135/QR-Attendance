@@ -83,7 +83,7 @@ function NavBar() {
                     </li>
 
                     <li className="nav-item">
-                        <a className="nav-link collapsed" href=" ">
+                        <a className="nav-link collapsed" href="/scanner">
                         <i className="bi bi-qr-code" />
                         <span>Scanner</span>
                         </a>
