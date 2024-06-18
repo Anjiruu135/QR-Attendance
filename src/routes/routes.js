@@ -158,6 +158,7 @@ router.post("/api/instructor/update", upload.single('instructor_pic'), (req, res
         address: formData.address,
         contact: formData.contact,
         email: formData.email,
+        position: formData.position,
     };
     const instructorAccount = {
         instructor_id: formData.instructor_id,
@@ -199,6 +200,7 @@ router.post("/api/instructor/add", upload.single('instructor_pic'), (req, res) =
       address: formData.address,
       contact: formData.contact,
       email: formData.email,
+      position: formData.position,
   };
   const instructorAccount = {
       instructor_id: formData.instructor_id,
@@ -206,29 +208,48 @@ router.post("/api/instructor/add", upload.single('instructor_pic'), (req, res) =
       user_type: 'User',
   };
 
-  const sql1 = 'INSERT INTO tbl_instructors SET ?';
-  db.query(sql1, instructorData, (err, result) => {
+  const sql = `SELECT * FROM tbl_instructors WHERE instructor_id = '${instructorData.instructor_id}';`;
+  db.query(sql, instructorData, (err, result) => {
       if (err) {
           console.error('Route Error:', err);
           res.status(500).send('Route Error');
           return;
-      }
+      } else
+      {
+        if (result.length > 0) {
+          res.status(200).send({
+            message: "Invalid ID",
+          });
+        }
+        else {
+          const sql1 = 'INSERT INTO tbl_instructors SET ?';
+          db.query(sql1, instructorData, (err, result) => {
+              if (err) {
+                  console.error('Route Error:', err);
+                  res.status(500).send('Route Error');
+                  return;
+              }
 
-      const sql2 = 'INSERT INTO tbl_users SET ?';
-      db.query(sql2, instructorAccount, (err, result) => {
-          if (err) {
-              console.error('Route Error:', err);
-              res.status(500).send('Route Error');
-              return;
-          }
-          res.status(200).send('Insert Successful');
-      });
+              const sql2 = 'INSERT INTO tbl_users SET ?';
+              db.query(sql2, instructorAccount, (err, result) => {
+                  if (err) {
+                      console.error('Route Error:', err);
+                      res.status(500).send('Route Error');
+                      return;
+                  }
+                  res.status(200).send({
+                    message: "Valid ID",
+                  });
+              });
+          });
+        }
+      }   
   });
 });
 
 // Fetch Instructors
 router.get("/api/instructors", (req, res) => {
-    db.query("SELECT tbl_instructors.*, tbl_users.password FROM tbl_instructors JOIN tbl_users ON tbl_instructors.instructor_id = tbl_users.instructor_id", (error, results) => {
+    db.query("SELECT tbl_instructors.*, tbl_users.password FROM tbl_instructors JOIN tbl_users ON tbl_instructors.instructor_id = tbl_users.instructor_id WHERE position='Instructor'", (error, results) => {
         if (error) {
           console.log(error);
           res.status(500).send("Error fetching data");
@@ -374,7 +395,7 @@ router.post("/api/student/add", upload.fields([{ name: 'student_pic', maxCount: 
 // Fetch Student for Instructor Account
 router.get("/api/students", (req, res) => {
   const uid = req.query.uid;
-  const sql = `SELECT * FROM tbl_students WHERE instructor_id = '${uid}';`;
+  const sql = `SELECT s.*, COALESCE((SELECT COUNT(DISTINCT a.date) FROM tbl_attendance a WHERE a.student_id = s.student_id), 0) AS present, COALESCE((SELECT COUNT(DISTINCT a.date) FROM tbl_attendance a WHERE a.instructor_id = s.instructor_id), 0) AS total_days FROM tbl_students s WHERE s.instructor_id = '${uid}';`;
   db.query(sql, (error, results) => {
       if (error) {
         console.log(error);
@@ -400,10 +421,37 @@ router.get("/api/attendance/students", (req, res) => {
     });
 });
 
+// Fetch Attendance Details for Admin Account
+router.get("/api/admin/attendance/details", (req, res) => {
+  const date = req.query.date;
+  const sql = `SELECT a.date, section, CONCAT(last_name, ', ', first_name, ' ', middle_name) as instructor_name, COUNT(DISTINCT a.student_id) AS present, (SELECT COUNT(s.student_id) FROM tbl_students s WHERE s.instructor_id = a.instructor_id) AS total_students FROM tbl_attendance a JOIN tbl_instructors on tbl_instructors.instructor_id = a.instructor_id WHERE a.date = '${date}' GROUP BY a.date, a.instructor_id ORDER BY a.date DESC;`;
+  db.query(sql, (error, results) => {
+      if (error) {
+        console.log(error);
+        res.status(500).send("Error fetching data");
+      } else {
+        res.json(results);
+      }
+    });
+});
+
 // Fetch Attendance for Instructor Account
 router.get("/api/attendance", (req, res) => {
   const uid = req.query.uid;
   const sql = `SELECT a.date, COUNT(DISTINCT a.student_id) AS present, (SELECT COUNT(student_id) FROM tbl_students WHERE instructor_id='${uid}') AS total_students FROM tbl_attendance a WHERE a.instructor_id='${uid}' GROUP BY a.date ORDER BY a.date DESC;`;
+  db.query(sql, (error, results) => {
+      if (error) {
+        console.log(error);
+        res.status(500).send("Error fetching data");
+      } else {
+        res.json(results);
+      }
+    });
+});
+
+// Fetch Attendance for Admin Account
+router.get("/api/admin/attendance", (req, res) => {
+  const sql = `SELECT a.date, COUNT(DISTINCT a.student_id) AS present, (SELECT COUNT(student_id) FROM tbl_students) AS total_students FROM tbl_attendance a GROUP BY a.date ORDER BY a.date DESC;`;
   db.query(sql, (error, results) => {
       if (error) {
         console.log(error);
@@ -429,5 +477,18 @@ router.get("/api/dashboard/info", (req, res) => {
     });
 });
 
+// Fetch Data for Admin Account Dashboard
+router.get("/api/admin/dashboard/info", (req, res) => {
+  const date = req.query.date;
+  const sql = `SELECT COALESCE(present_count, 0) AS present, COALESCE(total_count, 0) AS total_students,COALESCE(instructor_count, 0) AS total_instructors FROM (SELECT (SELECT COUNT(DISTINCT a.student_id) FROM tbl_students s LEFT JOIN tbl_attendance a ON s.student_id = a.student_id AND a.date = '${date}') AS present_count,(SELECT COUNT(student_id) FROM tbl_students) AS total_count,(SELECT COUNT(instructor_id) FROM tbl_instructors WHERE position='Instructor') AS instructor_count) AS counts;`;
+  db.query(sql, (error, results) => {
+      if (error) {
+        console.log(error);
+        res.status(500).send("Error fetching data");
+      } else {
+        res.json(results);
+      }
+    });
+});
 
 export { router };

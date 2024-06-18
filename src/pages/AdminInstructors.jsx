@@ -118,20 +118,32 @@ function AdminInstructors() {
     formDataToSend.append("contact", formData.contact);
     formDataToSend.append("email", formData.email);
     formDataToSend.append("password", formData.password);
+    formDataToSend.append("position", "Instructor");
 
-    axios
+    const form = e.target;
+    if (form.checkValidity()) {
+      axios
       .post(
         `${import.meta.env.VITE_REACT_APP_API_URL}/api/instructor/add`,
         formDataToSend
       )
       .then((response) => {
-        console.log(response.data);
-        Swal.fire({
-          title: "Success!",
-          text: "Instructor successfully added!",
-          icon: "success"
-        });
-        getInstructorData();
+        const { message } = response.data;
+        if (message === "Valid ID") {
+          Swal.fire({
+            title: "Success!",
+            text: "Instructor successfully added!",
+            icon: "success",
+          });
+          getInstructorData();
+        } else if (message === "Invalid ID") {
+          Swal.fire({
+            icon: "error",
+            title: "Add Error!",
+            text: "ID Already Taken!",
+            showConfirmButton: true,
+          });
+        }
       })
       .catch((error) => {
         console.error("Error:", error);
@@ -141,6 +153,23 @@ function AdminInstructors() {
           text: "Something went wrong!",
         });
       });
+
+      const modal = document.getElementById("Modal-Add");
+      const bootstrapModal = bootstrap.Modal.getInstance(modal);
+      if (bootstrapModal) {
+        bootstrapModal.hide();
+      } else {
+        console.error("Bootstrap modal instance not found");
+      }
+      
+      const backdrop = document.querySelector('.modal-backdrop');
+      if (backdrop) {
+        backdrop.parentNode.removeChild(backdrop);
+      }
+
+    } else {
+      console.log("Form validation failed");
+    }
   };
 
   const handleUpdate = (e) => {
@@ -157,6 +186,7 @@ function AdminInstructors() {
     formDataToSend.append("contact", formData.contact);
     formDataToSend.append("email", formData.email);
     formDataToSend.append("password", formData.password);
+    formDataToSend.append("position", "Instructor");
 
     const selectedInstructor = instructorData[selectedIndex];
     formDataToSend.append(
@@ -188,6 +218,7 @@ function AdminInstructors() {
           icon: "error",
           title: "Oops...",
           text: "Something went wrong!",
+          showConfirmButton: true,
         });
       });
   };
@@ -233,7 +264,6 @@ function AdminInstructors() {
         .catch((error) => {
           console.error("Error deleting user:", error);
         });
-
       }
     });
   };
@@ -307,6 +337,7 @@ function AdminInstructors() {
                                     name="instructor_id"
                                     value={formData.instructor_id}
                                     onChange={handleChange}
+                                    required
                                   />
                                   <label htmlFor="floatingInstructorID">
                                     Instructor ID
@@ -323,6 +354,7 @@ function AdminInstructors() {
                                     name="section"
                                     value={formData.section}
                                     onChange={handleChange}
+                                    required
                                   />
                                   <label htmlFor="floatingSection">
                                     Section
@@ -339,6 +371,7 @@ function AdminInstructors() {
                                     name="last_name"
                                     value={formData.last_name}
                                     onChange={handleChange}
+                                    required
                                   />
                                   <label htmlFor="floatingLastname">
                                     Last Name
@@ -355,6 +388,7 @@ function AdminInstructors() {
                                     name="first_name"
                                     value={formData.first_name}
                                     onChange={handleChange}
+                                    required
                                   />
                                   <label htmlFor="floatingFirstname">
                                     First Name
@@ -371,6 +405,7 @@ function AdminInstructors() {
                                     name="middle_name"
                                     value={formData.middle_name}
                                     onChange={handleChange}
+                                    required
                                   />
                                   <label htmlFor="floatingMiddlename">
                                     Middle Name
@@ -391,6 +426,7 @@ function AdminInstructors() {
                                     id="formFile"
                                     accept="image/*"
                                     onChange={(e) => setFile(e.target.files[0])}
+                                    required
                                   />
                                 </div>
                               </div>
@@ -404,6 +440,7 @@ function AdminInstructors() {
                                     name="address"
                                     value={formData.address}
                                     onChange={handleChange}
+                                    required
                                   />
                                   <label htmlFor="floatingAddress">
                                     Address
@@ -420,6 +457,9 @@ function AdminInstructors() {
                                     name="contact"
                                     value={formData.contact}
                                     onChange={handleChange}
+                                    required
+                                    pattern="\d+"
+                                    title="Please enter a valid number"
                                   />
                                   <label htmlFor="floatingContact">
                                     Contact
@@ -436,6 +476,7 @@ function AdminInstructors() {
                                     name="email"
                                     value={formData.email}
                                     onChange={handleChange}
+                                    required
                                   />
                                   <label htmlFor="floatingEmail">Email</label>
                                 </div>
@@ -450,6 +491,7 @@ function AdminInstructors() {
                                     name="password"
                                     value={formData.password}
                                     onChange={handleChange}
+                                    required
                                   />
                                   <label htmlFor="floatingPassword">
                                     Password
@@ -468,7 +510,6 @@ function AdminInstructors() {
                                 <button
                                   type="submit"
                                   className="btn btn-primary"
-                                  data-bs-dismiss="modal"
                                 >
                                   Add Instructor
                                 </button>
@@ -513,6 +554,8 @@ function AdminInstructors() {
                                     name="instructor_id"
                                     value={formData.instructor_id}
                                     onChange={handleChange}
+                                    required
+                                    readOnly
                                   />
                                   <label htmlFor="floatingInstructorID">
                                     Instructor ID
@@ -529,6 +572,7 @@ function AdminInstructors() {
                                     name="section"
                                     value={formData.section}
                                     onChange={handleChange}
+                                    required
                                   />
                                   <label htmlFor="floatingSection">
                                     Section
@@ -545,6 +589,7 @@ function AdminInstructors() {
                                     name="last_name"
                                     value={formData.last_name}
                                     onChange={handleChange}
+                                    required
                                   />
                                   <label htmlFor="floatingLastname">
                                     Last Name
@@ -561,6 +606,7 @@ function AdminInstructors() {
                                     name="first_name"
                                     value={formData.first_name}
                                     onChange={handleChange}
+                                    required
                                   />
                                   <label htmlFor="floatingFirstname">
                                     First Name
@@ -577,6 +623,7 @@ function AdminInstructors() {
                                     name="middle_name"
                                     value={formData.middle_name}
                                     onChange={handleChange}
+                                    required
                                   />
                                   <label htmlFor="floatingMiddlename">
                                     Middle Name
@@ -597,6 +644,7 @@ function AdminInstructors() {
                                     id="formFile"
                                     accept="image/*"
                                     onChange={(e) => setFile(e.target.files[0])}
+                                    required
                                   />
                                 </div>
                               </div>
@@ -610,6 +658,7 @@ function AdminInstructors() {
                                     name="address"
                                     value={formData.address}
                                     onChange={handleChange}
+                                    required
                                   />
                                   <label htmlFor="floatingAddress">
                                     Address
@@ -626,6 +675,9 @@ function AdminInstructors() {
                                     name="contact"
                                     value={formData.contact}
                                     onChange={handleChange}
+                                    required
+                                    pattern="\d+"
+                                    title="Please enter a valid number"
                                   />
                                   <label htmlFor="floatingContact">
                                     Contact
@@ -642,6 +694,7 @@ function AdminInstructors() {
                                     name="email"
                                     value={formData.email}
                                     onChange={handleChange}
+                                    required
                                   />
                                   <label htmlFor="floatingEmail">Email</label>
                                 </div>
@@ -656,6 +709,7 @@ function AdminInstructors() {
                                     name="password"
                                     value={formData.password}
                                     onChange={handleChange}
+                                    required
                                   />
                                   <label htmlFor="floatingPassword">
                                     Password
@@ -674,7 +728,6 @@ function AdminInstructors() {
                                 <button
                                   type="submit"
                                   className="btn btn-primary"
-                                  data-bs-dismiss="modal"
                                 >
                                   Update Instructor Info
                                 </button>

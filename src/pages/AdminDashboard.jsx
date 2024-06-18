@@ -1,43 +1,140 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import { useTable, useSortBy, useGlobalFilter } from "react-table";
+import axios from "axios";
 
 function AdminDashboard() {
-  const data = useMemo(
-    () => [
-      {
-        studentID: "2021-03666",
-        lastname: "Gitalan",
-        firstname: "Tedd Angelo",
-        middlename: "Jamorol",
-        section: "BSCS 3",
-      },
-      {
-        studentID: "2021-01091",
-        lastname: "Catalan",
-        firstname: "Wilfred",
-        middlename: "Dumon",
-        section: "BSCS 3",
-      },
-      {
-        studentID: "2021-03667",
-        lastname: "Cadiz",
-        firstname: "Eugine Bryan",
-        middlename: "Son",
-        section: "BSCS 3",
-      },
-    ],
-    []
-  );
+  // Fetch Dashboard Data
+  const [dashboardData, setDashboardData] = useState([]);
+  const [attendanceData, setAttendanceData] = useState([]);
+
+  const getDashboardData = async () => {
+    const now = new Date();
+    const date = now.toISOString().split("T")[0];
+
+    try {
+      const response = await axios.get(
+        `${import.meta.env.VITE_REACT_APP_API_URL}/api/admin/dashboard/info`,
+        { params: { date: date } }
+      );
+
+      const data = response.data[0];
+      const attendancePercentage =
+        data.total_students > 0
+          ? (data.present * 100) / data.total_students
+          : 0;
+
+      setDashboardData({
+        ...data,
+        attendance_percentage: attendancePercentage.toFixed(2),
+      });
+    } catch (error) {
+      console.error("Error fetching data:", error);
+    }
+  };
+
+  useEffect(() => {
+    getDashboardData();
+  }, []);
+
+  // Fetch Attendance
+  const getAttendanceData = async () => {
+    try {
+      const response = await axios.get(
+        `${import.meta.env.VITE_REACT_APP_API_URL}/api/admin/attendance`
+      );
+      const dataWithPercentage = response.data.map((item) => {
+        const percentage = (item.present / item.total_students) * 100;
+        let remarks;
+        if (percentage < 50) {
+          remarks = "Poor";
+        } else if (percentage <= 75) {
+          remarks = "Fair";
+        } else if (percentage <= 100) {
+          remarks = "Excellent";
+        }
+        return {
+          ...item,
+          percentage: percentage.toFixed(2),
+          remarks: remarks,
+        };
+      });
+      setAttendanceData(dataWithPercentage);
+    } catch (error) {
+      console.error("Error fetching data:", error);
+    }
+  };  
+
+  useEffect(() => {
+    getAttendanceData();
+  }, []);
+
+  const data = useMemo(() => attendanceData, [attendanceData]);
 
   const columns = useMemo(
     () => [
-      { Header: "Student ID", accessor: "studentID" },
-      { Header: "Last Name", accessor: "lastname" },
-      { Header: "First Name", accessor: "firstname" },
-      { Header: "Middle Name", accessor: "middlename" },
-      { Header: "Section", accessor: "section" },
+      { Header: "Date", accessor: "date" },
+      { Header: "Present Count", accessor: "present" },
+      {
+        Header: "Attendance Percentage",
+        accessor: "percentage",
+        Cell: ({ value }) => {
+          const percentage = parseFloat(value);
+          return (
+            <div
+              style={{
+                position: "relative",
+                width: "100%",
+                color: "white",
+                backgroundColor: "rgb(225,225,225)",
+                borderRadius: "12px",
+              }}
+            >
+            <div
+              style={{
+                width: `${percentage}%`,
+                backgroundColor:
+                  percentage < 50
+                    ? "rgb(235,30,30)"
+                    : percentage < 75
+                    ? "rgb(255,193,7)"
+                    : "rgb(10,110,250)",
+                height: "100%",
+                borderRadius: "12px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+              >
+              {value}%
+            </div>
+            </div>
+          );
+        },
+      },
+      {
+        Header: 'Remarks',
+        accessor: 'remarks',
+        Cell: ({ cell: { value } }) => {
+          let badgeClass = 'bg-success';
+          let badgeText = 'Excellent';
+    
+          if (value === 'Excellent') {
+            badgeClass = 'bg-success';
+            badgeText = 'Excellent';
+          } else if (value === 'Fair') {
+            badgeClass = 'bg-warning';
+            badgeText = 'Fair';
+          }
+          else if (value === 'Poor') {
+            badgeClass = 'bg-danger';
+            badgeText = 'Poor';
+          }
+    
+          return <h5><span className={`badge ${badgeClass}`}>{badgeText}</span></h5>;
+        },
+      },
     ],
-    []
+    [attendanceData]
   );
 
   const {
@@ -82,7 +179,7 @@ function AdminDashboard() {
                           <i className="bi bi-people" />
                         </div>
                         <div className="ps-3">
-                          <h6>145</h6>
+                          <h6>{dashboardData.total_students}</h6>
                         </div>
                       </div>
                     </div>
@@ -101,7 +198,7 @@ function AdminDashboard() {
                           <i className="bi bi-calendar-check" />
                         </div>
                         <div className="ps-3">
-                          <h6>99</h6>
+                          <h6>{dashboardData.present}</h6>
                         </div>
                       </div>
                     </div>
@@ -120,7 +217,7 @@ function AdminDashboard() {
                           <i className="bi bi-person" />
                         </div>
                         <div className="ps-3">
-                          <h6>45</h6>
+                          <h6>{dashboardData.total_instructors}</h6>
                         </div>
                       </div>
                     </div>
@@ -139,7 +236,7 @@ function AdminDashboard() {
                           <i className="bi bi-percent" />
                         </div>
                         <div className="ps-3">
-                          <h6>67%</h6>
+                          <h6>{dashboardData.attendance_percentage}%</h6>
                         </div>
                       </div>
                     </div>

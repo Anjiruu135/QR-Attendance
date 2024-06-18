@@ -46,10 +46,18 @@ function Dashboard() {
       );
       const dataWithPercentage = response.data.map((item) => {
         const percentage = (item.present / item.total_students) * 100;
+        let remarks;
+        if (percentage < 50) {
+          remarks = "Poor";
+        } else if (percentage <= 75) {
+          remarks = "Fair";
+        } else if (percentage <= 100) {
+          remarks = "Excellent";
+        }
         return {
           ...item,
           percentage: percentage.toFixed(2),
-          remarks: percentage >= 75 ? "Satisfactory" : "Needs Improvement",
+          remarks: remarks,
         };
       });
       setAttendanceData(dataWithPercentage);
@@ -87,7 +95,11 @@ function Dashboard() {
                 style={{
                   width: `${percentage}%`,
                   backgroundColor:
-                    percentage > 50 ? "rgb(10,110,250)" : "rgb(235,30,30)",
+                  percentage < 50
+                    ? "rgb(235,30,30)"
+                    : percentage < 75
+                    ? "rgb(255,193,7)"
+                    : "rgb(10,110,250)",
                   height: "100%",
                   borderRadius: "12px",
                   display: "flex",
@@ -101,7 +113,28 @@ function Dashboard() {
           );
         },
       },
-      { Header: "Remarks", accessor: "remarks" },
+      {
+        Header: 'Remarks',
+        accessor: 'remarks',
+        Cell: ({ cell: { value } }) => {
+          let badgeClass = 'bg-success';
+          let badgeText = 'Excellent';
+    
+          if (value === 'Excellent') {
+            badgeClass = 'bg-success';
+            badgeText = 'Excellent';
+          } else if (value === 'Fair') {
+            badgeClass = 'bg-warning';
+            badgeText = 'Fair';
+          }
+          else if (value === 'Poor') {
+            badgeClass = 'bg-danger';
+            badgeText = 'Poor';
+          }
+    
+          return <h5><span className={`badge ${badgeClass}`}>{badgeText}</span></h5>;
+        },
+      },
     ],
     [attendanceData]
   );

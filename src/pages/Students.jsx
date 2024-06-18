@@ -19,7 +19,13 @@ function Students() {
           params: { uid: auth?.uid },
         }
       );
-      setStudentData(response.data);
+      const dataWithPercentage = response.data.map(student => {
+        const present = student.present || 0;
+        const totalDays = student.total_days || 0;
+        const attendancePercentage = totalDays > 0 ? ((present / totalDays) * 100).toFixed(2) : '0.00';
+        return { ...student, attendancePercentage };
+      });
+      setStudentData(dataWithPercentage);
     } catch (error) {
       console.error("Error fetching data:", error);
     }
@@ -38,7 +44,43 @@ function Students() {
       { Header: "Last Name", accessor: "last_name" },
       { Header: "First Name", accessor: "first_name" },
       { Header: "Middle Name", accessor: "middle_name" },
-      { Header: "Contact", accessor: "contact" },
+      {
+        Header: "Attendance Percentage",
+        accessor: "attendancePercentage",
+        Cell: ({ value }) => {
+          const percentage = parseFloat(value);
+          return (
+            <div
+              style={{
+                position: "relative",
+                width: "100%",
+                color: "white",
+                backgroundColor: "rgb(225,225,225)",
+                borderRadius: "12px",
+              }}
+            >
+              <div
+                style={{
+                  width: `${percentage}%`,
+                  backgroundColor:
+                  percentage < 50
+                    ? "rgb(235,30,30)"
+                    : percentage < 75
+                    ? "rgb(255,193,7)"
+                    : "rgb(10,110,250)",
+                  height: "100%",
+                  borderRadius: "12px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                {value}%
+              </div>
+            </div>
+          );
+        },
+      },
       {
         Header: "Action",
         Cell: ({ row }) => (
@@ -168,6 +210,7 @@ function Students() {
             icon: "error",
             title: "Add Error!",
             text: "ID Already Taken!",
+            showConfirmButton: true,
           });
         }
       })
@@ -192,7 +235,7 @@ function Students() {
       if (backdrop) {
         backdrop.parentNode.removeChild(backdrop);
       }
-
+      
     } else {
       console.log("Form validation failed");
     }
@@ -245,6 +288,7 @@ function Students() {
           icon: "error",
           title: "Oops...",
           text: "Something went wrong!",
+          showConfirmButton: true,
         });
       });
   };
@@ -329,7 +373,7 @@ function Students() {
                         data-bs-target="#Modal-Add"
                         onClick={handleAdd}
                       >
-                        Add Student
+                        <i class="bi bi-person-plus" /> Add Student
                       </button>
                     </span>
 

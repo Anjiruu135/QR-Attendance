@@ -1,11 +1,17 @@
 import { useState } from 'react';
 import Offcanvas from 'react-bootstrap/Offcanvas';
+import useAuthUser from 'react-auth-kit/hooks/useAuthUser';
+import useSignOut from 'react-auth-kit/hooks/useSignOut';
 
 function AdminNavBar() {
     const [show, setShow] = useState(false);
 
     const handleClose = () => setShow(false);
     const handleShow = () => setShow(true);
+
+    const auth = useAuthUser()
+
+    const signOut = useSignOut()
 
   return (
     <>
@@ -26,13 +32,13 @@ function AdminNavBar() {
                     href=" "
                     data-bs-toggle="dropdown"
                 >
-                    <img
-                    src="src/assets/img/profile-img.jpg"
+                    {/* <img
+                    src="uploads\instructor\1718246467727-1x1.jpg"
                     alt="Profile"
                     className="rounded-circle"
-                    />
+                    /> */}
                     <span className="d-none d-md-block ps-2">
-                    Gitalan, T. &nbsp; (admin)
+                    (Admin)
                     </span>
                 </a>
                 {/* End Profile Iamge Icon */}
@@ -56,28 +62,28 @@ function AdminNavBar() {
             <Offcanvas.Body>
                 <ul className="sidebar-nav" id="sidebar-nav">
                     <li className="nav-item">
-                        <a className="nav-link collapsed" href="/admin">
+                        <a className="nav-link collapsed" href="/admin/home">
                         <i className="bi bi-grid" />
                         <span>Dashboard</span>
                         </a>
                     </li>
 
                     <li className="nav-item">
-                        <a className="nav-link collapsed" href="/admin_instructors">
+                        <a className="nav-link collapsed" href="/admin/instructors">
                         <i className="bi bi-person" />
                         <span>Instructors</span>
                         </a>
                     </li>
 
                     <li className="nav-item">
-                        <a className="nav-link collapsed" href="/admin_attendance">
+                        <a className="nav-link collapsed" href="/admin/attendance">
                         <i className="bi bi-layout-text-window-reverse" />
                         <span>Attendance Records</span>
                         </a>
                     </li>
 
                     <li className="nav-item">
-                        <a className="nav-link collapsed" href="/">
+                        <a className="nav-link collapsed" href="/" onClick={() => signOut()}>
                         <i className="bi bi-box-arrow-left" />
                         <span>Sign Out</span>
                         </a>

@@ -24,14 +24,14 @@ function Login() {
         `${import.meta.env.VITE_REACT_APP_API_URL}/api/login`,
         loginData
       );
-
+  
       if (response.status === 200) {
         const { message, instructor_id, token, user_name, section, user_type } = response.data;
-
-        if (message === "Login successful for user") {
+  
+        if (message === "Login successful for user" || message === "Login successful for admin") {
           Swal.fire({
             title: "Login Successful!",
-            text: "Welcome User!",
+            text: `Welcome ${user_type.charAt(0).toUpperCase() + user_type.slice(1)}!`,
             icon: "success",
           });
           signIn({
@@ -43,29 +43,10 @@ function Login() {
               name: user_name,
               uid: instructor_id,
               section: section,
+              role: user_type.toLowerCase(),
             },
-            authType: user_type.toLowerCase(),
-          })
-          window.location.href = "/home";
-        } else if (message === "Login successful for admin") {
-          Swal.fire({
-            title: "Login Successful!",
-            text: "Welcome Admin!",
-            icon: "success"
           });
-          signIn({
-            auth: {
-              token: token,
-              type: 'Bearer',
-            },
-            userState: {
-              name: user_name,
-              uid: instructor_id,
-              section: section,
-            },
-            authType: user_type.toLowerCase(),
-          })
-          window.location.href = "/admin";
+          window.location.href = user_type.toLowerCase() === 'admin' ? "/admin/home" : "/home";
         } else if (message === "Invalid Login") {
           Swal.fire({
             icon: "error",
@@ -76,13 +57,13 @@ function Login() {
       }
     } catch (error) {
       console.error("Error:", error);
-        Swal.fire({
-          icon: "error",
-          title: "Oops...",
-          text: "Something went wrong!",
-        });
+      Swal.fire({
+        icon: "error",
+        title: "Oops...",
+        text: "Something went wrong!",
+      });
     }
-  };
+  };  
 
   return (
     <>

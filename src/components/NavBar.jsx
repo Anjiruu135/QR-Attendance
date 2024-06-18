@@ -32,11 +32,11 @@ function NavBar() {
                     href=" "
                     data-bs-toggle="dropdown"
                 >
-                    <img
-                    src="src/assets/img/profile-img.jpg"
+                    {/* <img
+                    src="uploads\instructor\1718246467727-1x1.jpg"
                     alt="Profile"
                     className="rounded-circle"
-                    />
+                    /> */}
                     <span className="d-none d-md-block ps-2">
                     {auth?.name}
                     </span>

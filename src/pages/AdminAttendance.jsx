@@ -1,48 +1,92 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import { useTable, useSortBy, useGlobalFilter } from "react-table";
+import axios from "axios";
 
 function AdminAttendance() {
-  const data = useMemo(
-    () => [
-      {
-        date: "2024/06/04",
-        section: "BSCS 1",
-        instructor: "Gitalan, Tedd Angelo",
-        present: "1",
-        percentage: "33%",
-        remarks: "Poor",
-      },
-      {
-        date: "2024/06/05",
-        section: "BSCS 2",
-        instructor: "Catalan, Wilfredo",
-        present: "2",
-        percentage: "67%",
-        remarks: "Fair",
-      },
-      {
-        date: "2024/06/06",
-        section: "BSCS 3",
-        instructor: "Cadiz, Eugine Bryan",
-        present: "3",
-        percentage: "100%",
-        remarks: "Excellent",
-      },
-    ],
-    []
-  );
+  const [attendanceData, setAttendanceData] = useState([]);
+  const [selectedAttendance, setSelectedAttendance] = useState(null);
+
+  // Fetch Attendance
+  const getAttendanceData = async () => {
+    try {
+      const response = await axios.get(
+        `${import.meta.env.VITE_REACT_APP_API_URL}/api/admin/attendance`
+      );
+      const dataWithPercentage = response.data.map((item) => {
+        const percentage = (item.present / item.total_students) * 100;
+        let remarks;
+        if (percentage < 50) {
+          remarks = "Poor";
+        } else if (percentage <= 75) {
+          remarks = "Fair";
+        } else if (percentage <= 100) {
+          remarks = "Excellent";
+        }
+        return {
+          ...item,
+          percentage: percentage.toFixed(2),
+          remarks: remarks,
+        };
+      });
+      setAttendanceData(dataWithPercentage);
+    } catch (error) {
+      console.error("Error fetching data:", error);
+    }
+  };
+
+  useEffect(() => {
+    getAttendanceData();
+  }, []);
+
+  // Fetch Attendance Details
+  const [attendanceDetailsData, setAttendanceDetailsData] = useState([]);
+
+  const getAttendanceDetailsData = async () => {
+    try {
+      const response = await axios.get(
+        `${import.meta.env.VITE_REACT_APP_API_URL}/api/admin/attendance/details`,
+        {
+          params: { date: selectedAttendance.date, },
+        }
+      );
+      const dataWithPercentage = response.data.map((item) => {
+        const percentage = (item.present / item.total_students) * 100;
+        let remarks;
+        if (percentage < 50) {
+          remarks = "Poor";
+        } else if (percentage <= 75) {
+          remarks = "Fair";
+        } else if (percentage <= 100) {
+          remarks = "Excellent";
+        }
+        return {
+          ...item,
+          percentage: percentage.toFixed(2),
+          remarks: remarks,
+        };
+      });
+      setAttendanceDetailsData(dataWithPercentage);
+    } catch (error) {
+      console.error("Error fetching data:", error);
+    }
+  };
+
+  useEffect(() => {
+    getAttendanceDetailsData();
+  }, [selectedAttendance]);
+
+  // Datatable
+  const data = useMemo(() => attendanceData, [attendanceData]);
 
   const columns = useMemo(
     () => [
       { Header: "Date", accessor: "date" },
-      { Header: "Section", accessor: "section" },
-      { Header: "Instructor", accessor: "instructor" },
       { Header: "Present Count", accessor: "present" },
       {
         Header: "Attendance Percentage",
         accessor: "percentage",
         Cell: ({ value }) => {
-          const percentage = parseInt(value, 10);
+          const percentage = parseFloat(value);
           return (
             <div
               style={{
@@ -57,7 +101,11 @@ function AdminAttendance() {
                 style={{
                   width: `${percentage}%`,
                   backgroundColor:
-                    percentage > 50 ? "rgb(10,110,250)" : "rgb(235,30,30)",
+                  percentage < 50
+                    ? "rgb(235,30,30)"
+                    : percentage < 75
+                    ? "rgb(255,193,7)"
+                    : "rgb(10,110,250)",
                   height: "100%",
                   borderRadius: "12px",
                   display: "flex",
@@ -65,15 +113,52 @@ function AdminAttendance() {
                   justifyContent: "center",
                 }}
               >
-                {value}
+                {value}%
               </div>
             </div>
           );
         },
       },
-      { Header: "Remarks", accessor: "remarks" },
+      {
+        Header: 'Remarks',
+        accessor: 'remarks',
+        Cell: ({ cell: { value } }) => {
+          let badgeClass = 'bg-success';
+          let badgeText = 'Excellent';
+    
+          if (value === 'Excellent') {
+            badgeClass = 'bg-success';
+            badgeText = 'Excellent';
+          } else if (value === 'Fair') {
+            badgeClass = 'bg-warning';
+            badgeText = 'Fair';
+          }
+          else if (value === 'Poor') {
+            badgeClass = 'bg-danger';
+            badgeText = 'Poor';
+          }
+    
+          return <h5><span className={`badge ${badgeClass}`}>{badgeText}</span></h5>;
+        },
+      },
+      {
+        Header: "Action",
+        Cell: ({ row }) => (
+          <div>
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm"
+              data-bs-toggle="modal"
+              data-bs-target="#Modal-View"
+              onClick={() => handleView(row.index)}
+            >
+              <i className="bi bi-info-circle" /> Details
+            </button>
+          </div>
+        ),
+      },
     ],
-    []
+    [attendanceData]
   );
 
   const {
@@ -85,6 +170,93 @@ function AdminAttendance() {
     setGlobalFilter,
     state: { globalFilter },
   } = useTable({ columns, data }, useGlobalFilter, useSortBy);
+
+  // Attendance Details Datatable
+  const additionalData = useMemo(
+    () => attendanceDetailsData,
+    [attendanceDetailsData]
+  );
+
+  const additionalColumns = useMemo(
+    () => [
+      { Header: "Section", accessor: "section" },
+      { Header: "Instructor", accessor: "instructor_name" },
+      { Header: "Present Count", accessor: "present" },
+      {
+        Header: "Attendance Percentage",
+        accessor: "percentage",
+        Cell: ({ value }) => {
+          const percentage = parseFloat(value);
+          return (
+            <div
+              style={{
+                position: "relative",
+                width: "100%",
+                color: "white",
+                backgroundColor: "rgb(225,225,225)",
+                borderRadius: "12px",
+              }}
+            >
+              <div
+                style={{
+                  width: `${percentage}%`,
+                  backgroundColor:
+                  percentage < 50
+                    ? "rgb(235,30,30)"
+                    : percentage < 75
+                    ? "rgb(255,193,7)"
+                    : "rgb(10,110,250)",
+                  height: "100%",
+                  borderRadius: "12px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                {value}%
+              </div>
+            </div>
+          );
+        },
+      },
+      {
+        Header: 'Remarks',
+        accessor: 'remarks',
+        Cell: ({ cell: { value } }) => {
+          let badgeClass = 'bg-success';
+          let badgeText = 'Excellent';
+    
+          if (value === 'Excellent') {
+            badgeClass = 'bg-success';
+            badgeText = 'Excellent';
+          } else if (value === 'Fair') {
+            badgeClass = 'bg-warning';
+            badgeText = 'Fair';
+          }
+          else if (value === 'Poor') {
+            badgeClass = 'bg-danger';
+            badgeText = 'Poor';
+          }
+    
+          return <h5><span className={`badge ${badgeClass}`}>{badgeText}</span></h5>;
+        },
+      },
+    ],
+    []
+  );
+
+  const {
+    getTableProps: getAdditionalTableProps,
+    getTableBodyProps: getAdditionalTableBodyProps,
+    headerGroups: additionalHeaderGroups,
+    rows: additionalRows,
+    prepareRow: prepareAdditionalRow,
+  } = useTable({ columns: additionalColumns, data: additionalData });
+
+  const handleView = (index) => {
+    const selectedAttendance = attendanceData[index];
+    setSelectedAttendance(selectedAttendance);
+  };
 
   return (
     <>
@@ -155,6 +327,90 @@ function AdminAttendance() {
                       })}
                     </tbody>
                   </table>
+
+                  {/* Start Modal*/}
+                  <div className="modal fade" id="Modal-View" tabIndex={-1}>
+                    <div className="modal-dialog modal-xl">
+                      <div className="modal-content">
+                        <div className="modal-header">
+                          <h5 className="modal-title">
+                            Attendance Record Details
+                          </h5>
+                          <button
+                            type="button"
+                            className="btn-close"
+                            data-bs-dismiss="modal"
+                            aria-label="Close"
+                          />
+                        </div>
+
+                        <div className="modal-body">
+                          {selectedAttendance && (
+                            <>
+                              <div className="d-flex justify-content-between">
+                                <div className="flex-fill text-center">
+                                  <strong>Date:</strong>{" "}
+                                  {selectedAttendance.date}
+                                </div>
+                                <div className="flex-fill text-center">
+                                  <strong>Present Count:</strong>{" "}
+                                  {selectedAttendance.present} of{" "}
+                                  {selectedAttendance.total_students}
+                                </div>
+                                <div className="flex-fill text-center">
+                                  <strong>Attendance Percentage:</strong>{" "}
+                                  {selectedAttendance.percentage}%
+                                </div>
+                                <div className="flex-fill text-center">
+                                  <strong>Remarks:</strong>{" "}
+                                  {selectedAttendance.remarks}
+                                </div>
+                              </div>
+
+                              <div className="mt-2">
+                                <h5 className="card-title">Details: </h5>
+                                <table
+                                  {...getAdditionalTableProps()}
+                                  className="table table-bordered"
+                                >
+                                  <thead>
+                                    {additionalHeaderGroups.map(
+                                      (headerGroup) => (
+                                        <tr
+                                          {...headerGroup.getHeaderGroupProps()}
+                                        >
+                                          {headerGroup.headers.map((column) => (
+                                            <th {...column.getHeaderProps()}>
+                                              {column.render("Header")}
+                                            </th>
+                                          ))}
+                                        </tr>
+                                      )
+                                    )}
+                                  </thead>
+                                  <tbody {...getAdditionalTableBodyProps()}>
+                                    {additionalRows.map((row) => {
+                                      prepareAdditionalRow(row);
+                                      return (
+                                        <tr {...row.getRowProps()}>
+                                          {row.cells.map((cell) => (
+                                            <td {...cell.getCellProps()}>
+                                              {cell.render("Cell")}
+                                            </td>
+                                          ))}
+                                        </tr>
+                                      );
+                                    })}
+                                  </tbody>
+                                </table>
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  {/* End Modal*/}
                 </div>
               </div>
             </div>
