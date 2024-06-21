@@ -83,6 +83,13 @@ function AdminNavBar() {
                     </li>
 
                     <li className="nav-item">
+                        <a className="nav-link collapsed" href="/admin/scanner">
+                        <i className="bi bi-qr-code" />
+                        <span>Entrance Scanner</span>
+                        </a>
+                    </li>
+
+                    <li className="nav-item">
                         <a className="nav-link collapsed" href="/" onClick={() => signOut()}>
                         <i className="bi bi-box-arrow-left" />
                         <span>Sign Out</span>

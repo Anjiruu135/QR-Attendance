@@ -424,7 +424,7 @@ router.get("/api/attendance/students", (req, res) => {
 // Fetch Attendance Details for Admin Account
 router.get("/api/admin/attendance/details", (req, res) => {
   const date = req.query.date;
-  const sql = `SELECT a.date, section, CONCAT(last_name, ', ', first_name, ' ', middle_name) as instructor_name, COUNT(DISTINCT a.student_id) AS present, (SELECT COUNT(s.student_id) FROM tbl_students s WHERE s.instructor_id = a.instructor_id) AS total_students FROM tbl_attendance a JOIN tbl_instructors on tbl_instructors.instructor_id = a.instructor_id WHERE a.date = '${date}' GROUP BY a.date, a.instructor_id ORDER BY a.date DESC;`;
+  const sql = `SELECT a.date, i.section, CONCAT(i.last_name, ', ', i.first_name, ' ', i.middle_name) AS instructor_name, COUNT(DISTINCT a.student_id) AS present, (SELECT COUNT(s.student_id) FROM tbl_students s WHERE s.instructor_id = i.instructor_id) AS total_students FROM tbl_instructors i LEFT JOIN tbl_attendance a ON i.instructor_id = a.instructor_id AND a.date = '${date}' WHERE position = 'Instructor' GROUP BY a.date, i.section, i.instructor_id ORDER BY instructor_name;`;
   db.query(sql, (error, results) => {
       if (error) {
         console.log(error);
