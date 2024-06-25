@@ -26,7 +26,7 @@ function Login() {
       );
   
       if (response.status === 200) {
-        const { message, instructor_id, token, user_name, section, user_type } = response.data;
+        const { message, instructor_id, token, user_name, section, user_type, role } = response.data;
   
         if (message === "Login successful for user" || message === "Login successful for admin") {
           Swal.fire({
@@ -43,7 +43,8 @@ function Login() {
               name: user_name,
               uid: instructor_id,
               section: section,
-              role: user_type.toLowerCase(),
+              user_type: user_type.toLowerCase(),
+              role: role,
             },
           });
           window.location.href = user_type.toLowerCase() === 'admin' ? "/admin/home" : "/home";

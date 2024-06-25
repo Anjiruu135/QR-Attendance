@@ -13,7 +13,7 @@ const storage = multer.diskStorage({
     } else if (file.fieldname === 'qr_code') {
       cb(null, './public/uploads/qrcode');
     } else if (file.fieldname === 'instructor_pic') {
-      cb(null, './public/uploads/instructor');
+      cb(null, './public/uploads/personnel');
     }
   },
   filename: (req, file, cb) => {
@@ -65,18 +65,81 @@ router.post("/api/attendance/scan", (req, res) => {
   });
 });
 
+// Entry Scan
+router.post("/api/admin/scan", (req, res) => {
+  const formData = req.body;
+
+  const attendanceData = {
+    date: formData.date,
+    student_id: formData.student_id,
+    time: formData.time,
+  };
+
+  const sql = `SELECT * FROM tbl_students WHERE student_id = '${attendanceData.student_id}';`;
+  db.query(sql, attendanceData, (err, result) => {
+      if (err) {
+          console.error('Route Error:', err);
+          res.status(500).send('Route Error');
+          return;
+      } else {
+        if (result.length > 0) {
+          const sql1 = `SELECT * FROM tbl_logs WHERE time_out IS NULL AND student_id='${attendanceData.student_id}' AND date='${attendanceData.date}';`;
+          db.query(sql1, attendanceData, (err, result1) => {
+              if (err) {
+                  console.error('Route Error:', err);
+                  res.status(500).send('Route Error');
+                  return;
+              } else {
+                if (result1.length > 0) {
+                  const sql2 = `UPDATE tbl_logs SET time_out='${attendanceData.time}' WHERE time_out IS NULL AND student_id='${attendanceData.student_id}' AND date='${attendanceData.date}';`;
+                  db.query(sql2, attendanceData, (err, result) => {
+                      if (err) {
+                          console.error('Route Error:', err);
+                          res.status(500).send('Route Error');
+                          return;
+                      } else {
+                        res.status(200).send({
+                          message: "Valid ID Time Out",
+                        });
+                      }
+                  });
+                } else {
+                  const sql3 = `INSERT INTO tbl_logs(date, student_id, time_in) VALUES ('${attendanceData.date}','${attendanceData.student_id}','${attendanceData.time}');`;
+                  db.query(sql3, attendanceData, (err, result) => {
+                      if (err) {
+                          console.error('Route Error:', err);
+                          res.status(500).send('Route Error');
+                          return;
+                      } else {
+                        res.status(200).send({
+                          message: "Valid ID Time In",
+                        });
+                      }
+                  });
+                }
+              }
+          });
+        } else {
+          res.status(200).send({
+            message: "Invalid ID",
+          });
+        }
+      }
+  });
+});
+
 // Login
 router.post("/api/login", (req, res) => {
   const { instructor_id, password } = req.body;
 
-  const sql = 'SELECT tbl_users.*, last_name, first_name, section FROM tbl_users JOIN tbl_instructors ON tbl_users.instructor_id = tbl_instructors.instructor_id WHERE tbl_users.instructor_id = ? AND password = ?;';
+  const sql = 'SELECT tbl_users.*, last_name, first_name, section, position FROM tbl_users JOIN tbl_instructors ON tbl_users.instructor_id = tbl_instructors.instructor_id WHERE tbl_users.instructor_id = ? AND password = ?;';
   db.query(sql, [instructor_id, password], (error, result) => {
       if (error) {
         console.log(error);
         res.status(500).send("Error fetching data");
       } else {
         if (result.length > 0) {
-          const { instructor_id, user_type, last_name, first_name, section } = result[0];
+          const { instructor_id, user_type, last_name, first_name, section, position } = result[0];
           const token = jwt.sign({ instructor_id, user_type }, process.env.JWT_SECRET, { expiresIn: '24h' });
 
           if (user_type === "User") {
@@ -87,6 +150,7 @@ router.post("/api/login", (req, res) => {
               token: token,
               user_name: `${last_name}, ${first_name}`,
               section: section,
+              role: position,
             });
           } else if (user_type === "Admin") {
             res.status(200).send({
@@ -96,6 +160,7 @@ router.post("/api/login", (req, res) => {
               token: token,
               user_name: `${last_name}, ${first_name}`,
               section: section,
+              role: position,
             });
           } 
         } else {
@@ -136,7 +201,7 @@ router.delete("/api/instructor/:instructor_id/delete", (req, res) => {
 // Update Instructor
 router.post("/api/instructor/update", upload.single('instructor_pic'), (req, res) => {
     const formData = req.body;
-    const filePath = req.file ? `/uploads/instructor/${req.file.filename}` : null;
+    const filePath = req.file ? `/uploads/personnel/${req.file.filename}` : null;
 
     if (filePath && formData.instructorPicToUpdate) {
       fs.unlink(`./public${formData.instructorPicToUpdate}`, (err) => {
@@ -163,7 +228,7 @@ router.post("/api/instructor/update", upload.single('instructor_pic'), (req, res
     const instructorAccount = {
         instructor_id: formData.instructor_id,
         password: formData.password,
-        user_type: 'User',
+        user_type: formData.user_type,
     };
 
     const sql1 = 'UPDATE tbl_instructors SET ? WHERE instructor_id = ?';
@@ -189,7 +254,7 @@ router.post("/api/instructor/update", upload.single('instructor_pic'), (req, res
 // Add Instructor
 router.post("/api/instructor/add", upload.single('instructor_pic'), (req, res) => {
   const formData = req.body;
-  const filePath = `/uploads/instructor/${req.file.filename}`;
+  const filePath = `/uploads/personnel/${req.file.filename}`;
   const instructorData = {
       instructor_id: formData.instructor_id,
       last_name: formData.last_name,
@@ -205,7 +270,7 @@ router.post("/api/instructor/add", upload.single('instructor_pic'), (req, res) =
   const instructorAccount = {
       instructor_id: formData.instructor_id,
       password: formData.password,
-      user_type: 'User',
+      user_type: formData.user_type,
   };
 
   const sql = `SELECT * FROM tbl_instructors WHERE instructor_id = '${instructorData.instructor_id}';`;
@@ -482,6 +547,89 @@ router.get("/api/admin/dashboard/info", (req, res) => {
   const date = req.query.date;
   const sql = `SELECT COALESCE(present_count, 0) AS present, COALESCE(total_count, 0) AS total_students,COALESCE(instructor_count, 0) AS total_instructors FROM (SELECT (SELECT COUNT(DISTINCT a.student_id) FROM tbl_students s LEFT JOIN tbl_attendance a ON s.student_id = a.student_id AND a.date = '${date}') AS present_count,(SELECT COUNT(student_id) FROM tbl_students) AS total_count,(SELECT COUNT(instructor_id) FROM tbl_instructors WHERE position='Instructor') AS instructor_count) AS counts;`;
   db.query(sql, (error, results) => {
+      if (error) {
+        console.log(error);
+        res.status(500).send("Error fetching data");
+      } else {
+        res.json(results);
+      }
+    });
+});
+
+// Fetch Logs Admin
+router.get("/api/admin/logs", (req, res) => {
+  const sql = `SELECT date, section, CONCAT(tbl_students.last_name, ', ', tbl_students.first_name, ' ', tbl_students.middle_name) AS fullname, time_in, time_out FROM tbl_logs JOIN tbl_students on tbl_logs.student_id = tbl_students.student_id JOIN tbl_instructors on tbl_students.instructor_id = tbl_instructors.instructor_id ORDER BY time_in DESC;`;
+  db.query(sql, (error, results) => {
+      if (error) {
+        console.log(error);
+        res.status(500).send("Error fetching data");
+      } else {
+        res.json(results);
+      }
+    });
+});
+
+// Fetch Logs for Time In Admin
+router.get("/api/admin/logs/timein", (req, res) => {
+  const date = req.query.date;
+  const sql = `SELECT date, section, CONCAT(tbl_students.last_name, ', ', tbl_students.first_name, ' ', tbl_students.middle_name) AS fullname, time_in FROM tbl_logs JOIN tbl_students on tbl_logs.student_id = tbl_students.student_id JOIN tbl_instructors on tbl_students.instructor_id = tbl_instructors.instructor_id WHERE time_out IS NULL and date = '${date}' GROUP BY fullname;`;
+  db.query(sql, (error, results) => {
+      if (error) {
+        console.log(error);
+        res.status(500).send("Error fetching data");
+      } else {
+        res.json(results);
+      }
+    });
+});
+
+// Fetch Logs for Time Out Admin
+router.get("/api/admin/logs/timeout", (req, res) => {
+  const date = req.query.date;
+  const sql = `SELECT '${date}' AS date, section, CONCAT(tbl_students.last_name, ', ', tbl_students.first_name, ' ', tbl_students.middle_name) AS fullname, COALESCE(tbl_logs.time_out, '-') AS time_out FROM tbl_students LEFT JOIN tbl_logs ON tbl_students.student_id = tbl_logs.student_id AND tbl_logs.date = '${date}' AND tbl_logs.time_out IS NOT NULL JOIN tbl_instructors ON tbl_students.instructor_id = tbl_instructors.instructor_id WHERE tbl_students.student_id NOT IN (SELECT DISTINCT student_id FROM tbl_logs WHERE date = '${date}' AND time_in IS NOT NULL AND time_out IS NULL) GROUP BY fullname, time_out ORDER BY time_out DESC;`;
+  db.query(sql, (error, results) => {
+      if (error) {
+        console.log(error);
+        res.status(500).send("Error fetching data");
+      } else {
+        res.json(results);
+      }
+    });
+});
+
+// Fetch Logs for Time In
+router.get("/api/logs/timein", (req, res) => {
+  const date = req.query.date;
+  const uid = req.query.uid;
+  const sql = `SELECT date, CONCAT(tbl_students.last_name, ', ', tbl_students.first_name, ' ', tbl_students.middle_name) AS fullname, time_in FROM tbl_logs JOIN tbl_students on tbl_logs.student_id = tbl_students.student_id WHERE time_out IS NULL and instructor_id = '${uid}' and date = '${date}' GROUP BY fullname;`;
+  db.query(sql, (error, results) => {
+      if (error) {
+        console.log(error);
+        res.status(500).send("Error fetching data");
+      } else {
+        res.json(results);
+      }
+    });
+});
+
+// Fetch Logs for Time Out
+router.get("/api/logs/timeout", (req, res) => {
+  const date = req.query.date;
+  const uid = req.query.uid;
+  const sql = `SELECT '${date}' AS date, CONCAT(tbl_students.last_name, ', ', tbl_students.first_name, ' ', tbl_students.middle_name) AS fullname, COALESCE(tbl_logs.time_out, '-') AS time_out FROM tbl_students LEFT JOIN tbl_logs ON tbl_students.student_id = tbl_logs.student_id AND tbl_logs.date = '${date}' AND tbl_logs.time_out IS NOT NULL WHERE tbl_students.student_id NOT IN (SELECT DISTINCT student_id FROM tbl_logs WHERE date = '${date}' AND time_in IS NOT NULL AND time_out IS NULL) AND instructor_id = '${uid}' GROUP BY fullname, time_out ORDER BY time_out DESC;`;
+  db.query(sql, (error, results) => {
+      if (error) {
+        console.log(error);
+        res.status(500).send("Error fetching data");
+      } else {
+        res.json(results);
+      }
+    });
+});
+
+// Fetch Users
+router.get("/api/admin/users", (req, res) => {
+  db.query("SELECT tbl_instructors.*, tbl_users.password FROM tbl_instructors JOIN tbl_users ON tbl_instructors.instructor_id = tbl_users.instructor_id WHERE position!='SuperAdmin'", (error, results) => {
       if (error) {
         console.log(error);
         res.status(500).send("Error fetching data");

@@ -104,6 +104,45 @@ function AdminInstructors() {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
+  const [status, setStatus] = useState('');
+  
+  const handleSendEmail = async (instructorData) => {
+    setStatus('Sending...');
+    
+    try {
+        const email = instructorData.email
+        const subject = 'QR Attendance Account'
+        const message = `
+            Dear Instructor,
+
+            Your QR Attendance Account has been created successfully. Here are your account details:
+
+            User ID: ${instructorData.instructor_id}
+            Password: ${instructorData.password}
+
+            Please use these credentials to log in to the system.
+
+            Best regards,
+            QR Attendance Team
+        `;
+
+        const response = await axios.post('http://localhost:3002/send-email', {
+            email,
+            subject,
+            message,
+        });
+
+        if (response.status === 200) {
+            setStatus('Email sent successfully!');
+        } else {
+            setStatus('Failed to send email.');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        setStatus('Error sending email.');
+    }
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
 
@@ -119,6 +158,7 @@ function AdminInstructors() {
     formDataToSend.append("email", formData.email);
     formDataToSend.append("password", formData.password);
     formDataToSend.append("position", "Instructor");
+    formDataToSend.append("user_type", "User");
 
     const form = e.target;
     if (form.checkValidity()) {
@@ -136,6 +176,7 @@ function AdminInstructors() {
             icon: "success",
           });
           getInstructorData();
+          handleSendEmail(formData);
         } else if (message === "Invalid ID") {
           Swal.fire({
             icon: "error",
@@ -187,6 +228,7 @@ function AdminInstructors() {
     formDataToSend.append("email", formData.email);
     formDataToSend.append("password", formData.password);
     formDataToSend.append("position", "Instructor");
+    formDataToSend.append("user_type", "User");
 
     const selectedInstructor = instructorData[selectedIndex];
     formDataToSend.append(
@@ -198,7 +240,9 @@ function AdminInstructors() {
       selectedInstructor.instructor_pic
     );
 
-    axios
+    const form = e.target;
+    if (form.checkValidity()) {
+      axios
       .post(
         `${import.meta.env.VITE_REACT_APP_API_URL}/api/instructor/update`,
         formDataToSend
@@ -221,6 +265,23 @@ function AdminInstructors() {
           showConfirmButton: true,
         });
       });
+
+      const modal = document.getElementById("Modal-Edit");
+      const bootstrapModal = bootstrap.Modal.getInstance(modal);
+      if (bootstrapModal) {
+        bootstrapModal.hide();
+      } else {
+        console.error("Bootstrap modal instance not found");
+      }
+      
+      const backdrop = document.querySelector('.modal-backdrop');
+      if (backdrop) {
+        backdrop.parentNode.removeChild(backdrop);
+      }
+
+    } else {
+      console.log("Form validation failed");
+    }
   };
 
   const handleEdit = (index) => {
@@ -270,6 +331,11 @@ function AdminInstructors() {
 
   const handleAdd = () => {
     setFormData(initialInstructorData);
+  };
+
+  const generateRandomPassword = () => {
+    const randomPassword = Math.random().toString(36).slice(-8);
+    setFormData({ ...formData, password: randomPassword });
   };
 
   return (
@@ -492,10 +558,23 @@ function AdminInstructors() {
                                     value={formData.password}
                                     onChange={handleChange}
                                     required
+                                    readOnly
                                   />
                                   <label htmlFor="floatingPassword">
                                     Password
                                   </label>
+                                  <button
+                                  type="button"
+                                  onClick={generateRandomPassword}
+                                  className="btn btn-secondary position-absolute"
+                                  style={{
+                                    right: "10px",
+                                    top: "50%",
+                                    transform: "translateY(-50%)",
+                                  }}
+                                >
+                                  Generate
+                                </button>
                                 </div>
                               </div>
 
@@ -710,6 +789,7 @@ function AdminInstructors() {
                                     value={formData.password}
                                     onChange={handleChange}
                                     required
+                                    readOnly
                                   />
                                   <label htmlFor="floatingPassword">
                                     Password

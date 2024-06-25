@@ -19,7 +19,7 @@ function NavBar() {
             <div className="d-flex align-items-center justify-content-between">
             <i className="bi bi-list toggle-sidebar-btn" onClick={handleShow}/>
             <a href="/home" className="logo d-flex align-items-center p-2">
-                <img src="src/assets/img/logo.png" alt="" />
+                <img src="images/logo.png" alt="" />
                 <span className="d-none d-lg-block">QR Attendance</span>
             </a>
             </div>
@@ -32,11 +32,11 @@ function NavBar() {
                     href=" "
                     data-bs-toggle="dropdown"
                 >
-                    {/* <img
-                    src="uploads\instructor\1718246467727-1x1.jpg"
+                    <img
+                    src="../public/images/logo.png"
                     alt="Profile"
                     className="rounded-circle"
-                    /> */}
+                    />
                     <span className="d-none d-md-block ps-2">
                     {auth?.name}
                     </span>
@@ -54,7 +54,7 @@ function NavBar() {
             <Offcanvas.Header closeButton>
                 <Offcanvas.Title>
                     <a href="/home" className="logo d-flex align-items-center p-2">
-                        <img src="src/assets/img/logo.png" alt="" />
+                        <img src="images/logo.png" alt="" />
                         <span className="d-lg-block">QR Attendance</span>
                     </a>
                 </Offcanvas.Title>
@@ -78,7 +78,14 @@ function NavBar() {
                     <li className="nav-item">
                         <a className="nav-link collapsed" href="/attendance">
                         <i className="bi bi-layout-text-window-reverse" />
-                        <span>Attendance Records</span>
+                        <span>Attendance Record</span>
+                        </a>
+                    </li>
+
+                    <li className="nav-item">
+                        <a className="nav-link collapsed" href="/logs">
+                        <i className="bi bi-book" />
+                        <span>Log Record</span>
                         </a>
                     </li>
 

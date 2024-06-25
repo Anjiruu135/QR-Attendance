@@ -15,10 +15,13 @@ import AdminNavBar from './components/AdminNavBar';
 import AdminInstructors from './pages/AdminInstructors';
 import AdminAttendance from './pages/AdminAttendance';
 import Scanner from './pages/Scanner';
+import AdminScanner from './pages/AdminScanner';
+import AdminLogs from './pages/AdminLogs';
+import Logs from './pages/Logs';
+import AdminUserManagement from './pages/AdminUserManagement';
 
 import createStore from 'react-auth-kit/createStore';
 import AuthProvider from 'react-auth-kit';
-import RequireAuth from '@auth-kit/react-router/RequireAuth';
 
 import { Navigate } from 'react-router-dom';
 import useAuthUser from 'react-auth-kit/hooks/useAuthUser';
@@ -30,18 +33,18 @@ const store = createStore({
   cookieSecure: window.location.protocol === 'https:',
 });
 
-const RequireAdminAuth = ({ children, fallbackPath }) => {
+const RequireAuth = ({ children, allowedUserTypes, fallbackPath }) => {
   const auth = useAuthUser();
-  if (auth?.role === 'admin') {
+  if (allowedUserTypes.includes(auth?.user_type)) {
     return children;
   } else {
     return <Navigate to={fallbackPath} />;
   }
 };
 
-const RequireUserAuth = ({ children, fallbackPath }) => {
+const RequireSecondAuth = ({ children, allowedUserRoles, fallbackPath }) => {
   const auth = useAuthUser();
-  if (auth?.role === 'user') {
+  if (allowedUserRoles.includes(auth?.role)) {
     return children;
   } else {
     return <Navigate to={fallbackPath} />;
@@ -60,71 +63,119 @@ const router = createBrowserRouter([
   {
     path: "/home",
     element: (
-      <RequireUserAuth fallbackPath={'/'}>
+      <RequireAuth allowedUserTypes={['user']} fallbackPath={'/'}>
         <NavBar />
         <Dashboard />
         <Footer />
-      </RequireUserAuth>
-    ),
-  },
-  {
-    path: "/admin/home",
-    element: (
-      <RequireAdminAuth fallbackPath={'/'}>
-        <AdminNavBar />
-        <AdminDashboard />
-        <Footer />
-      </RequireAdminAuth>
+      </RequireAuth>
     ),
   },
   {
     path: "/students",
     element: (
-      <RequireUserAuth fallbackPath={'/'}>
+      <RequireAuth allowedUserTypes={['user']} fallbackPath={'/'}>
         <NavBar />
         <Students />
         <Footer />
-      </RequireUserAuth>
-    ),
-  },
-  {
-    path: "/admin/instructors",
-    element: (
-      <RequireAdminAuth fallbackPath={'/'}>
-        <AdminNavBar />
-        <AdminInstructors />
-        <Footer />
-      </RequireAdminAuth>
+      </RequireAuth>
     ),
   },
   {
     path: "/attendance",
     element: (
-      <RequireUserAuth fallbackPath={'/'}>
+      <RequireAuth allowedUserTypes={['user']} fallbackPath={'/'}>
         <NavBar />
         <Attendance />
         <Footer />
-      </RequireUserAuth>
-    ),
-  },
-  {
-    path: "/admin/attendance",
-    element: (
-      <RequireAdminAuth fallbackPath={'/'}>
-        <AdminNavBar />
-        <AdminAttendance />
-        <Footer />
-      </RequireAdminAuth>
+      </RequireAuth>
     ),
   },
   {
     path: "/scanner",
     element: (
-      <RequireUserAuth fallbackPath={'/'}>
+      <RequireAuth allowedUserTypes={['user']} fallbackPath={'/'}>
         <NavBar />
         <Scanner />
         <Footer />
-      </RequireUserAuth>
+      </RequireAuth>
+    ),
+  },
+  {
+    path: "/logs",
+    element: (
+      <RequireAuth allowedUserTypes={['user']} fallbackPath={'/'}>
+        <NavBar />
+        <Logs />
+        <Footer />
+      </RequireAuth>
+    ),
+  },
+  {
+    path: "/admin/logs",
+    element: (
+      <RequireAuth allowedUserTypes={['admin']} fallbackPath={'/'}>
+        <AdminNavBar />
+        <AdminLogs />
+        <Footer />
+      </RequireAuth>
+    ),
+  },
+  {
+    path: "/admin/home",
+    element: (
+      <RequireAuth allowedUserTypes={['admin']} fallbackPath={'/'}>
+        <AdminNavBar />
+        <AdminDashboard />
+        <Footer />
+      </RequireAuth>
+    ),
+  },
+  {
+    path: "/admin/instructors",
+    element: (
+      <RequireAuth allowedUserTypes={['admin']} fallbackPath={'/'}>
+        <RequireSecondAuth allowedUserRoles={['SuperAdmin', 'Admin', 'Encoder']} fallbackPath={'/'}>
+          <AdminNavBar />
+          <AdminInstructors />
+          <Footer />
+        </RequireSecondAuth>
+      </RequireAuth>
+    ),
+  },
+  {
+    path: "/admin/attendance",
+    element: (
+      <RequireAuth allowedUserTypes={['admin']} fallbackPath={'/'}>
+        <RequireSecondAuth allowedUserRoles={['SuperAdmin', 'Admin']} fallbackPath={'/'}>
+          <AdminNavBar />
+          <AdminAttendance />
+          <Footer />  
+        </RequireSecondAuth>
+      </RequireAuth>
+    ),
+  },
+  {
+    path: "/admin/scanner",
+    element: (
+      <RequireAuth allowedUserTypes={['admin']} fallbackPath={'/'}>
+        <RequireSecondAuth allowedUserRoles={['SuperAdmin', 'Scanner']} fallbackPath={'/'}>
+          <AdminNavBar />
+          <AdminScanner />
+          <Footer />
+        </RequireSecondAuth>
+      </RequireAuth>
+    ),
+  },
+  {
+    path: "/admin/usermanagement",
+    element: (
+      <RequireAuth allowedUserTypes={['admin']} fallbackPath={'/'}>
+        <RequireSecondAuth allowedUserRoles={['SuperAdmin']} fallbackPath={'/'}>
+          <AdminNavBar />
+          <AdminUserManagement />
+          <Footer />
+        </RequireSecondAuth>
+      </RequireAuth>
     ),
   },
   {

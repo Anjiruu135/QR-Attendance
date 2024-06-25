@@ -176,7 +176,7 @@ function Attendance() {
       { Header: "Student Name", accessor: "fullname" },
       { Header: "Time", accessor: "time" },
     ],
-    []
+    [attendanceDetailsData]
   );
 
   const {
